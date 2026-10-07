@@ -27,6 +27,28 @@ table{width:100%;border-collapse:collapse;font-size:13px}th,td{padding:8px 4px;t
 .bars{display:flex;gap:6px;align-items:flex-end;height:90px}.bars div{flex:1;background:var(--pr);border-radius:4px 4px 0 0;min-height:2px}
 .bl{display:flex;gap:6px}.bl span{flex:1;text-align:center;font-size:11px;color:var(--mu)}
 .err{color:var(--er);font-size:13px;min-height:16px}.ctr{text-align:center}.big{font-size:48px}
+
+.nav em{font-style:normal}
+.bd.lg{margin:auto;max-width:420px;width:100%;padding-bottom:24px}
+@media(min-width:600px) and (max-width:899px){#app{max-width:640px}.nav{max-width:640px}}
+@media(min-width:900px){
+ body{font-size:16px}
+ #app{max-width:none;padding-left:230px}
+ #app.nl{padding-left:0}
+ .top{padding:20px 32px;font-size:18px}
+ .bd{width:100%;max-width:960px;margin:0 auto;padding:24px 32px;gap:14px}
+ .nav{left:0;top:0;bottom:0;transform:none;width:230px;max-width:none;flex-direction:column;border-top:0;border-right:1px solid var(--bd);padding:20px 12px;gap:4px}
+ .nav::before{content:'📊 Отчёты отдела';font-weight:700;font-size:17px;padding:6px 14px 20px}
+ .nav span{flex:none;text-align:left;padding:12px 14px;font-size:15px;border-radius:10px}
+ .nav span:hover{background:rgba(37,99,235,.08)}
+ .nav span.on{background:rgba(37,99,235,.14)}
+ .nav br{display:none}.nav em{font-size:20px;margin-right:12px;vertical-align:middle}
+ .kg{grid-template-columns:repeat(3,1fr);gap:12px}.kp b{font-size:26px}
+ table{font-size:15px}th,td{padding:12px 8px}tr.cl:hover{background:rgba(37,99,235,.07)}
+ .bars{height:180px}.bl span{font-size:13px}
+ .btn{max-width:320px}.chip:hover{border-color:var(--pr)}
+ .f{min-height:50px}
+}
 </style></head><body><div id="app"></div>
 <script>
 // ====== 1) ВСТАВЬТЕ СЮДА URL ВАШЕГО Apps Script (Web app) ======
@@ -47,8 +69,9 @@ async function api(a, o = {}) {
 }
 function logout() { localStorage.removeItem('token'); S.token = ''; S.user = null; login(); }
 function shell(title, sub, body, tabs) {
+  app.className = tabs ? '' : 'nl';
   app.innerHTML = `<div class="top"><b>${title}</b><small>${sub || ''}</small></div><div class="bd">${body}</div>` +
-    (tabs ? `<div class="nav">${tabs.map(t => `<span class="${S.tab === t[0] ? 'on' : ''}" onclick="go('${t[0]}')">${t[1]}<br>${t[2]}</span>`).join('')}</div>` : '');
+    (tabs ? `<div class="nav">${tabs.map(t => `<span class="${S.tab === t[0] ? 'on' : ''}" onclick="go('${t[0]}')"><em>${t[1]}</em><br>${t[2]}</span>`).join('')}</div>` : '');
 }
 const MT = [['report', '📊', 'Отчёт'], ['history', '📈', 'История'], ['profile', '👤', 'Профиль']];
 const RT = [['dash', '📊', 'Дашборд'], ['team', '👥', 'Команда'], ['period', '📅', 'Период'], ['settings', '⚙️', 'Настройки']];
@@ -67,7 +90,8 @@ function chips(fn, list) {
 
 // ====== ВХОД ======
 function login(err = '') {
-  app.innerHTML = `<div class="bd" style="justify-content:center"><div class="ctr big">📊</div>
+  app.className = 'nl';
+  app.innerHTML = `<div class="bd lg" style="justify-content:center"><div class="ctr big">📊</div>
   <div class="ctr"><b style="font-size:20px">Отчёты отдела</b><div class="mu">Войдите, чтобы продолжить</div></div>
   <div class="lb">Телефон</div><input class="in" id="ph" inputmode="tel" placeholder="9XXXXXXXX">
   <div class="lb">Пароль</div><input class="in" id="pw" type="password" placeholder="••••••••">
@@ -123,7 +147,7 @@ function profile() {
 // ====== РОП ======
 const kp = (l, v, h) => `<div class="kp ${h ? 'h' : ''}"><i>${l}</i><b>${v}</b></div>`;
 function kpis(t) {
-  return `<div class="g2">${kp('📞 Звонки', fmt(t.calls))}${kp('📢 Рассылки', fmt(t.broadcasts))}${kp('💬 Переписки', fmt(t.chats))}${kp('💰 Продажи', fmt(t.sales), 1)}${kp('💵 Выручка', fmt(t.sales_amount), 1)}${kp('⏳ Ожидают · 🔥 Горячие', t.awaiting_payment + ' · ' + t.hot_leads)}</div>`;
+  return `<div class="g2 kg">${kp('📞 Звонки', fmt(t.calls))}${kp('📢 Рассылки', fmt(t.broadcasts))}${kp('💬 Переписки', fmt(t.chats))}${kp('💰 Продажи', fmt(t.sales), 1)}${kp('💵 Выручка', fmt(t.sales_amount), 1)}${kp('⏳ Ожидают · 🔥 Горячие', t.awaiting_payment + ' · ' + t.hot_leads)}</div>`;
 }
 async function dash() {
   const [f, t] = range(), r = await api('dashboard', { from: f, to: t });
