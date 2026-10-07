@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="ru"><head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Отчёты отдела</title>
+<style>
+:root{--bg:#f4f6fa;--card:#fff;--tx:#111827;--mu:#6b7280;--bd:#e5e7eb;--pr:#2563eb;--ok:#16a34a;--wn:#f59e0b;--er:#dc2626}
+@media(prefers-color-scheme:dark){:root{--bg:#0f172a;--card:#1e293b;--tx:#f1f5f9;--mu:#94a3b8;--bd:#334155}}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--tx);font:15px Roboto,system-ui,sans-serif}
+#app{max-width:480px;margin:auto;min-height:100vh;display:flex;flex-direction:column}
+.top{padding:16px;background:var(--pr);color:#fff}.top small{display:block;opacity:.85;margin-top:2px}
+.bd{flex:1;padding:14px;padding-bottom:80px;display:flex;flex-direction:column;gap:10px}
+.c{background:var(--card);border:1px solid var(--bd);border-radius:12px;padding:12px}
+.mu{color:var(--mu);font-size:13px}.lb{font-size:12px;color:var(--mu);text-transform:uppercase;margin-top:6px}
+.f{display:flex;justify-content:space-between;align-items:center;background:var(--card);border:1px solid var(--bd);border-radius:10px;padding:0 12px;min-height:44px}
+.f input{width:110px;text-align:right;border:0;background:none;color:var(--tx);font:700 16px inherit;outline:none}
+input.in,textarea{width:100%;height:44px;border:1px solid var(--bd);border-radius:10px;padding:0 12px;background:var(--card);color:var(--tx);font:inherit}
+textarea{height:70px;padding:10px}
+.btn{height:48px;border:0;border-radius:10px;background:var(--ok);color:#fff;font:700 15px inherit;width:100%;cursor:pointer}
+.btn.p{background:var(--pr)}.btn.o{background:var(--card);color:var(--pr);border:1px solid var(--pr)}
+.nav{position:fixed;bottom:0;left:50%;transform:translateX(-50%);width:100%;max-width:480px;display:flex;background:var(--card);border-top:1px solid var(--bd);padding-bottom:env(safe-area-inset-bottom)}
+.nav span{flex:1;text-align:center;padding:8px 0;font-size:11px;color:var(--mu);cursor:pointer}.nav span.on{color:var(--pr);font-weight:700}
+.chips{display:flex;gap:6px;flex-wrap:wrap}.chip{padding:7px 12px;border:1px solid var(--bd);border-radius:20px;background:var(--card);font-size:13px;cursor:pointer}.chip.on{background:var(--pr);color:#fff;border-color:var(--pr)}
+.g2{display:grid;grid-template-columns:1fr 1fr;gap:8px}.kp{background:var(--card);border:1px solid var(--bd);border-radius:12px;padding:10px}.kp i{font-style:normal;font-size:12px;color:var(--mu)}.kp b{display:block;font-size:22px}.kp.h b{color:var(--ok)}
+table{width:100%;border-collapse:collapse;font-size:13px}th,td{padding:8px 4px;text-align:right;border-bottom:1px solid var(--bd)}th:first-child,td:first-child{text-align:left}tr.cl{cursor:pointer}
+.d{display:inline-block;width:12px;height:12px;border-radius:50%}.green{background:var(--ok)}.yellow{background:var(--wn)}.red{background:var(--er)}
+.bars{display:flex;gap:6px;align-items:flex-end;height:90px}.bars div{flex:1;background:var(--pr);border-radius:4px 4px 0 0;min-height:2px}
+.bl{display:flex;gap:6px}.bl span{flex:1;text-align:center;font-size:11px;color:var(--mu)}
+.err{color:var(--er);font-size:13px;min-height:16px}.ctr{text-align:center}.big{font-size:48px}
+</style></head><body><div id="app"></div>
+<script>
+// ====== 1) ВСТАВЬТЕ СЮДА URL ВАШЕГО Apps Script (Web app) ======
+const API = 'https://script.google.com/macros/s/ВАШ_ID/exec';
+
+const $ = s => document.querySelector(s), app = $('#app');
+const S = { token: localStorage.token || '', user: null, st: {}, today: '', tab: '', range: '7', from: '', to: '' };
+const fmt = n => Number(n || 0).toLocaleString('ru');
+const dm = d => d.slice(8, 10) + '.' + d.slice(5, 7);
+const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+const iso = d => new Date(d - d.getTimezoneOffset() * 6e4).toISOString().slice(0, 10);
+
+async function api(a, o = {}) {
+  const d = encodeURIComponent(JSON.stringify({ a, token: S.token, ...o }));
+  const r = await (await fetch(API + '?d=' + d)).json();
+  if (r.error) { if (/Сессия/.test(r.error)) logout(); throw new Error(r.error); }
+  return r;
+}
+function logout() { localStorage.removeItem('token'); S.token = ''; S.user = null; login(); }
+function shell(title, sub, body, tabs) {
+  app.innerHTML = `<div class="top"><b>${title}</b><small>${sub || ''}</small></div><div class="bd">${body}</div>` +
+    (tabs ? `<div class="nav">${tabs.map(t => `<span class="${S.tab === t[0] ? 'on' : ''}" onclick="go('${t[0]}')">${t[1]}<br>${t[2]}</span>`).join('')}</div>` : '');
+}
+const MT = [['report', '📊', 'Отчёт'], ['history', '📈', 'История'], ['profile', '👤', 'Профиль']];
+const RT = [['dash', '📊', 'Дашборд'], ['team', '👥', 'Команда'], ['period', '📅', 'Период'], ['settings', '⚙️', 'Настройки']];
+function go(t) { S.tab = t; ({ report, history: hist, profile, dash, team, period, settings })[t](); }
+function range() {
+  const t = new Date(), y = new Date(t - 864e5);
+  if (S.range === 'today') return [iso(t), iso(t)];
+  if (S.range === 'yest') return [iso(y), iso(y)];
+  if (S.range === '7') return [iso(new Date(t - 6 * 864e5)), iso(t)];
+  if (S.range === 'month') return [iso(t).slice(0, 8) + '01', iso(t)];
+  return [S.from || iso(t), S.to || iso(t)];
+}
+function chips(fn, list) {
+  return `<div class="chips">${list.map(x => `<span class="chip ${S.range === x[0] ? 'on' : ''}" onclick="S.range='${x[0]}';${fn}()">${x[1]}</span>`).join('')}</div>`;
+}
+
+// ====== ВХОД ======
+function login(err = '') {
+  app.innerHTML = `<div class="bd" style="justify-content:center"><div class="ctr big">📊</div>
+  <div class="ctr"><b style="font-size:20px">Отчёты отдела</b><div class="mu">Войдите, чтобы продолжить</div></div>
+  <div class="lb">Телефон</div><input class="in" id="ph" inputmode="tel" placeholder="9XXXXXXXX">
+  <div class="lb">Пароль</div><input class="in" id="pw" type="password" placeholder="••••••••">
+  <div class="err" id="er">${err}</div><button class="btn p" id="bt">Войти</button></div>`;
+  $('#bt').onclick = async () => {
+    $('#bt').disabled = true; $('#er').textContent = '';
+    try {
+      const r = await api('login', { phone: $('#ph').value, password: $('#pw').value });
+      S.token = r.token; localStorage.token = r.token; start(r);
+    } catch (e) { $('#er').textContent = e.message; $('#bt').disabled = false; }
+  };
+}
+function start(r) {
+  S.user = r.user; S.st = r.settings; S.today = r.today;
+  go(S.user.role === 'rop' ? 'dash' : 'report');
+}
+
+// ====== МЕНЕДЖЕР ======
+const FIELDS = [['calls', '📞 Звонки'], ['broadcasts', '📢 Рассылки'], ['chats', '💬 Переписки'], ['sales', '💰 Продажи'],
+  ['sales_amount', '💵 Сумма продаж'], ['awaiting_payment', '⏳ Ожидают оплаты'], ['hot_leads', '🔥 Горячие клиенты']];
+async function report(edit) {
+  const { report: r } = await api('myReport'), t = S.today;
+  const h = new Date().getHours(), hi = h < 12 ? '☀️ Доброе утро' : h < 18 ? '🌤 Добрый день' : '🌙 Добрый вечер';
+  if (r && !edit) {
+    return shell('Отчёт', dm(t) + '.' + t.slice(0, 4), `<div class="ctr big" style="margin-top:20px">✅</div>
+    <div class="ctr"><b>Отчёт за ${dm(t)} отправлен</b><div class="mu">Время отправки: ${r.submitted_at.slice(11)}</div></div>
+    <div class="c mu">Звонки ${r.calls} · Рассылки ${r.broadcasts} · Переписки ${r.chats}<br>Продажи ${r.sales} · ${fmt(r.sales_amount)} сомони</div>
+    <button class="btn o" onclick="report(true)">✏️ Исправить</button>
+    <div class="mu ctr">Удалять отчёт нельзя. Правки сохраняются:<br>отправлен ${r.submitted_at.slice(11)} · изменён ${r.updated_at.slice(11)}</div>`, MT);
+  }
+  const v = r || {};
+  shell(`${hi}, ${esc(S.user.name)}!`, `Сегодня ${dm(t)}.${t.slice(0, 4)} · сдать до ${S.st.deadline}`,
+    `<div class="lb">Активность</div>` + FIELDS.slice(0, 3).map(inp).join('') + `<div class="lb">Результат</div>` + FIELDS.slice(3).map(inp).join('') +
+    `<textarea id="comment" placeholder="📝 Комментарий…">${esc(v.comment)}</textarea><div class="err" id="er"></div>
+    <button class="btn" id="bt">🟢 ${r ? 'СОХРАНИТЬ ИЗМЕНЕНИЯ' : 'ОТПРАВИТЬ ОТЧЁТ'}</button>`, MT);
+  function inp(f) { return `<label class="f"><span>${f[1]}</span><input id="${f[0]}" type="number" min="0" inputmode="numeric" placeholder="0" value="${v[f[0]] ?? ''}"></label>`; }
+  $('#bt').onclick = async () => {
+    const o = { comment: $('#comment').value }; FIELDS.forEach(f => o[f[0]] = $('#' + f[0]).value || 0);
+    $('#bt').disabled = true;
+    try { await api('saveReport', { r: o }); report(); } catch (e) { $('#er').textContent = e.message; $('#bt').disabled = false; }
+  };
+}
+async function hist() {
+  const [f, t] = range(), r = await api('history', { from: f, to: t });
+  const pl = n => n + (n % 10 == 1 && n != 11 ? ' продажа' : [2, 3, 4].includes(n % 10) && ![12, 13, 14].includes(n) ? ' продажи' : ' продаж');
+  shell('📈 История', 'Мои отчёты', chips('hist', [['today', 'Сегодня'], ['7', 'Неделя'], ['month', 'Месяц']]) +
+    (r.list.map(x => `<div class="c"><b>${dm(x.report_date)}</b> — ${pl(+x.sales)} — ${fmt(x.sales_amount)} сомони<div class="mu">📞 ${x.calls} · 📢 ${x.broadcasts} · 💬 ${x.chats}</div></div>`).join('') || '<div class="mu ctr">Нет отчётов</div>'), MT);
+}
+function profile() {
+  shell('👤 Профиль', S.st.company, `<div class="c"><b>${esc(S.user.name)}</b><div class="mu">+992 ${esc(S.user.phone)} · менеджер</div></div><button class="btn o" onclick="logout()">Выйти</button>`, MT);
+}
+
+// ====== РОП ======
+const kp = (l, v, h) => `<div class="kp ${h ? 'h' : ''}"><i>${l}</i><b>${v}</b></div>`;
+function kpis(t) {
+  return `<div class="g2">${kp('📞 Звонки', fmt(t.calls))}${kp('📢 Рассылки', fmt(t.broadcasts))}${kp('💬 Переписки', fmt(t.chats))}${kp('💰 Продажи', fmt(t.sales), 1)}${kp('💵 Выручка', fmt(t.sales_amount), 1)}${kp('⏳ Ожидают · 🔥 Горячие', t.awaiting_payment + ' · ' + t.hot_leads)}</div>`;
+}
+async function dash() {
+  const [f, t] = range(), r = await api('dashboard', { from: f, to: t });
+  shell('📊 Дашборд', (f === t ? dm(f) : dm(f) + ' → ' + dm(t)) + ' · Весь отдел',
+    chips('dash', [['today', 'Сегодня'], ['yest', 'Вчера'], ['7', '7 дней'], ['month', 'Месяц']]) + kpis(r.totals) +
+    `<div class="lb">Менеджеры</div><div class="c"><table><tr><th>Имя</th><th>Зв</th><th>Рас</th><th>Пер</th><th>Пр</th><th>Сумма</th><th></th></tr>` +
+    r.managers.map(m => `<tr class="cl" onclick="card('${m.id}')"><td>${esc(m.name)}</td>${m.reported ? [m.calls, m.broadcasts, m.chats, m.sales, fmt(m.sales_amount)].map(x => `<td>${x}</td>`).join('') : '<td>—</td>'.repeat(5)}<td><span class="d ${m.status}"></span></td></tr>`).join('') +
+    `</table></div><div class="mu">🟢 норма · 🟡 частично · 🔴 не сдал</div>` +
+    (r.missingToday.length ? `<div class="c"><div class="lb">🔴 Не сдали отчёт сегодня</div>${r.missingToday.map(esc).join(' · ')}</div>` : ''), RT);
+}
+async function team() {
+  const [f, t] = range(), r = await api('dashboard', { from: f, to: t });
+  shell('👥 Команда', 'Нажмите на менеджера', r.managers.map(m => `<div class="c" onclick="card('${m.id}')" style="cursor:pointer"><span class="d ${m.status}"></span> <b>${esc(m.name)}</b><div class="mu">💰 ${m.sales} · 💵 ${fmt(m.sales_amount)}</div></div>`).join(''), RT);
+}
+async function card(id) {
+  const [f, t] = range(), r = await api('manager', { id, from: f, to: t }), mx = Math.max(1, ...r.days.map(d => d.sales));
+  const wd = ['Вс', 'Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб'];
+  shell('← 👤 ' + esc(r.user.name), f === t ? dm(f) : dm(f) + ' → ' + dm(t), kpis(r.totals) +
+    `<div class="c"><div class="lb">Продажи — последние 7 дней</div><div class="bars">${r.days.map(d => `<div style="height:${d.sales / mx * 100}%"></div>`).join('')}</div>
+    <div class="bl">${r.days.map(d => `<span>${wd[new Date(d.date).getDay()]}<br>${d.sales}</span>`).join('')}</div></div>` +
+    (r.list[0] && r.list[0].comment ? `<div class="c"><div class="lb">Комментарий</div>${esc(r.list[0].comment)}</div>` : ''), RT);
+  document.querySelector('.top').onclick = () => go(S.tab);
+}
+async function period() {
+  const [f, t] = range(), r = await api('dashboard', { from: f, to: t });
+  shell('📅 Период', dm(f) + ' → ' + dm(t), chips('period', [['today', 'Сегодня'], ['yest', 'Вчера'], ['7', '7 дней'], ['month', 'Этот месяц'], ['custom', 'Произвольный']]) +
+    `<div class="g2"><input class="in" type="date" id="df" value="${f}"><input class="in" type="date" id="dt" value="${t}"></div>
+    <button class="btn o" onclick="S.range='custom';S.from=$('#df').value;S.to=$('#dt').value;period()">Применить</button>
+    <div class="c"><div class="lb">Итого за ${r.totals.days} дн.</div>${[['📞 Звонки', 'calls'], ['📢 Рассылки', 'broadcasts'], ['💬 Переписки', 'chats'], ['💰 Продажи', 'sales'], ['💵 Выручка', 'sales_amount']].map(x => `<div class="f" style="border:0"><span>${x[0]}</span><b>${fmt(r.totals[x[1]])}</b></div>`).join('')}</div>
+    <button class="btn p" id="ex">⬇️ Выгрузить (Excel/CSV)</button>`, RT);
+  $('#ex').onclick = () => {
+    const h = 'Менеджер;Звонки;Рассылки;Переписки;Продажи;Сумма;Ожидают оплаты;Горячие\n';
+    const csv = '\ufeff' + h + r.managers.map(m => [m.name, m.calls, m.broadcasts, m.chats, m.sales, m.sales_amount, m.awaiting_payment, m.hot_leads].join(';')).join('\n');
+    const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([csv], { type: 'text/csv' })); a.download = `otchet_${f}_${t}.csv`; a.click();
+  };
+}
+async function settings() {
+  const { settings: s } = await api('getSettings');
+  const row = (k, l) => `<label class="f"><span>${l}</span><input id="s_${k}" value="${esc(s[k])}"></label>`;
+  shell('⚙️ Настройки', 'Только для РОПа', `<div class="lb">Нормативы в день</div>${row('norm_calls', 'Норма звонков')}${row('norm_broadcasts', 'Норма рассылок')}${row('norm_chats', 'Норма переписок')}
+    <div class="lb">Отчёты</div>${row('deadline', 'Время сдачи')}${row('company', 'Компания')}
+    <button class="btn p" id="sv">Сохранить</button>
+    <div class="lb">Новый менеджер</div><input class="in" id="n_name" placeholder="Имя"><input class="in" id="n_ph" placeholder="Телефон"><input class="in" id="n_pw" placeholder="Пароль (от 6 символов)">
+    <div class="err" id="er"></div><button class="btn o" id="au">Добавить менеджера</button><button class="btn o" onclick="logout()">Выйти</button>`, RT);
+  $('#sv').onclick = async () => {
+    const o = {}; ['norm_calls', 'norm_broadcasts', 'norm_chats', 'deadline', 'company'].forEach(k => o[k] = $('#s_' + k).value);
+    const r = await api('saveSettings', { s: o }); S.st = r.settings; $('#er').textContent = '✅ Сохранено';
+  };
+  $('#au').onclick = async () => {
+    try { await api('addUser', { name: $('#n_name').value, phone: $('#n_ph').value, password: $('#n_pw').value }); $('#er').textContent = '✅ Менеджер добавлен'; }
+    catch (e) { $('#er').textContent = e.message; }
+  };
+}
+
+// ====== СТАРТ ======
+(async () => { if (S.token) { try { start(await api('me')); return; } catch (e) {} } login(); })();
+</script></body></html>
