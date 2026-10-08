@@ -95,6 +95,18 @@ tr.cl{cursor:pointer;transition:background .15s}tr.cl:active{background:rgba(37,
  .chip:hover{border-color:var(--pr)}.kc:hover{border-color:var(--pr)}
  .ov{align-items:center}.md{border-radius:18px;max-width:440px}.ts{bottom:30px}
 }
+
+.rr{display:flex;gap:6px;align-items:center}
+.logo{display:flex;gap:7px;align-items:flex-end;justify-content:center;height:70px;margin:auto}
+.logo i{width:15px;border-radius:5px;display:block;transform-origin:bottom;animation:lg .8s cubic-bezier(.2,1.5,.4,1) both,bob 2.2s ease-in-out infinite}
+.logo i:nth-child(1){height:38px;background:#84cc16;animation-delay:0s,1s}
+.logo i:nth-child(2){height:60px;background:#ec4899;animation-delay:.15s,1.2s}
+.logo i:nth-child(3){height:48px;background:#2563eb;animation-delay:.3s,1.4s}
+@keyframes lg{from{transform:scaleY(0)}to{transform:scaleY(1)}}
+@keyframes bob{50%{transform:scaleY(.86)}}
+.ptr{position:fixed;top:0;left:50%;transform:translate(-50%,-60px);opacity:0;z-index:60;width:40px;height:40px;border-radius:50%;background:var(--card);color:var(--pr);display:flex;align-items:center;justify-content:center;font-size:22px;box-shadow:0 4px 14px rgba(0,0,0,.25);pointer-events:none;transition:opacity .2s}
+.ptr.spin{animation:spr .7s linear infinite}
+@keyframes spr{to{rotate:360deg}}
 </style></head><body><div id="app"></div>
 <script>
 // ====== 1) ВСТАВЬТЕ СЮДА URL ВАШЕГО Apps Script (Web app) ======
@@ -184,7 +196,7 @@ function shell(title, sub, body, tabs, silent, back) {
   if (!silent) window.scrollTo(0, 0);
 }
 const VIEWS = {};
-function go(t) { S.nav++; S.tab = t; S.edit = false; VIEWS[t](); }
+function go(t) { S.nav++; S.tab = t; S.edit = false; S.inCard = false; VIEWS[t](); }
 function pick(r, fn) { S.range = r; S.nav++; VIEWS[fn](); }
 function range() {
   const t = new Date(), y = new Date(t - 864e5);
@@ -200,7 +212,7 @@ const DCH = [['today', 'Сегодня'], ['yest', 'Вчера'], ['7', '7 дн�
 // ====== ВХОД ======
 function login(err = '') {
   app.dataset.nav = ''; app.className = 'nl';
-  app.innerHTML = `<div class="bd lg in" style="justify-content:center"><div class="ctr big">📊</div>
+  app.innerHTML = `<div class="bd lg in" style="justify-content:center"><div class="logo"><i></i><i></i><i></i></div>
   <div class="ctr"><b style="font-size:20px">Отчёты отдела</b><div class="mu">Войдите, чтобы продолжить</div></div>
   <div class="lb">Телефон</div><input class="in" id="ph" inputmode="tel" placeholder="9XXXXXXXX">
   <div class="lb">Пароль</div><input class="in" id="pw" type="password" placeholder="••••••••">
@@ -268,7 +280,10 @@ function reportView(r, silent) {
     const hm = pad(new Date().getHours()) + ':' + pad(new Date().getMinutes()), prev = r;
     const opt = { ...(prev || {}), ...o, submitted_at: prev ? prev.submitted_at : t + ' ' + hm, updated_at: t + ' ' + hm };
     S.edit = false; cset('my', { report: opt }); reportView(opt); toast('Отчёт сохранён ✅', 'ok'); // сразу показываем результат
-    api('saveReport', { r: o }).then(x => cset('my', x)).catch(e => { // если сервер отказал — возвращаем форму
+    localStorage.pend = JSON.stringify({ date: t, r: o, uid: S.user.id }); // храним на устройстве, пока сервер не подтвердит
+    api('saveReport', { r: o }).then(x => { localStorage.removeItem('pend'); cset('my', x); }).catch(e => {
+      if (/Нет связи/.test(e.message)) { toast('Нет связи — отчёт сохранён на устройстве и отправится сам', 'er'); return; }
+      localStorage.removeItem('pend'); // сервер отказал по существу — возвращаем форму с введёнными данными
       toast(e.message, 'er'); cset('my', { report: prev }); S.draft = o; S.edit = true; reportView(prev); });
   };
 }
@@ -308,7 +323,7 @@ VIEWS.team = () => swr('team', 'team', {}, (d, s) => {
 }, () => shell('👥 Команда', '', sk(4), RT));
 
 function card(id) {
-  S.nav++; S.cid = id; VIEWS.card = () => card(S.cid);
+  S.nav++; S.cid = id; S.inCard = true; VIEWS.card = () => card(S.cid);
   const [f, t] = range(), back = () => go(S.tab);
   swr(`m:${id}:${f}:${t}`, 'manager', { id, from: f, to: t }, (d, s) => {
     const u = d.user, mx = Math.max(1, ...d.days.map(x => x.sales)), wd = ['Вс', 'Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб'], legacy = HASHRE.test(u.password);
@@ -321,8 +336,12 @@ function card(id) {
       `<div class="c"><div class="lb">Продажи — последние 7 дней</div><div class="bars">${d.days.map(x => `<div style="height:${x.sales / mx * 100}%"></div>`).join('')}</div>
       <div class="bl">${d.days.map(x => `<span>${wd[new Date(x.date + 'T00:00').getDay()]}<br>${x.sales}</span>`).join('')}</div></div>` +
       (d.list[0] && d.list[0].comment ? `<div class="c"><div class="lb">Последний комментарий</div>${esc(d.list[0].comment)}</div>` : '') +
+      `<div class="lb">Отчёты за период (можно изменить или удалить)</div>` +
+      (d.list.map(x => `<div class="c rr"><div style="flex:1"><b>${dm(x.report_date)}</b> — 💰 ${x.sales} · ${fmt(x.sales_amount)} смн · $${fmt(x.sales_usd)}<div class="mu">📞 ${x.calls} · 📢 ${x.broadcasts} · ⏳ ${x.awaiting_payment}${x.edited_by ? ' · ✏️ ' + esc(x.edited_by) : ''}</div></div><span class="chip" data-e="${x.id}">✏️</span><span class="chip" data-d="${x.id}">🗑</span></div>`).join('') || '<div class="mu">Нет отчётов за период</div>') +
       `<button class="btn p" id="eu">✏️ Изменить</button><button class="btn dg" id="du">🗑 Удалить менеджера</button>`, RT, s, back);
     $('#eu').onclick = () => userForm(u); $('#du').onclick = () => delForm(u);
+    $$('[data-e]').forEach(el => el.onclick = () => repForm(d.list.find(r => r.id === el.dataset.e), u.id));
+    $$('[data-d]').forEach(el => el.onclick = () => repDel(d.list.find(r => r.id === el.dataset.d), u.id));
     if (!legacy) {
       let shown = false;
       $('#eye').onclick = () => { shown = !shown; $('#pv').textContent = shown ? u.password : '••••••'; };
@@ -359,6 +378,25 @@ function delForm(u) {
   });
 }
 
+function repForm(r, mid) {
+  const f = (k, l) => `<label class="f"><span>${l}</span><input id="r_${k}" type="number" min="0" step="any" inputmode="decimal" value="${esc(r[k])}"></label>`;
+  modal(`<b style="font-size:18px">✏️ Отчёт за ${dm(r.report_date)}</b>${f('calls', '📞 Звонки')}${f('broadcasts', '📢 Рассылки/Переписки')}${f('sales', '💰 Продажи')}${f('sales_amount', '💵 Сомони')}${f('sales_usd', '💲 Доллары')}${f('awaiting_payment', '⏳ Ожидают оплаты')}
+    <textarea id="r_comment" placeholder="Комментарий">${esc(r.comment)}</textarea><div class="err" id="r_e"></div><button class="btn p" id="r_s">Сохранить</button><button class="btn o" id="r_c">Отмена</button>`);
+  $('#r_c').onclick = closeModal;
+  $('#r_s').onclick = () => run($('#r_s'), async () => {
+    const o = { comment: $('#r_comment').value }; ['calls', 'broadcasts', 'sales', 'sales_amount', 'sales_usd', 'awaiting_payment'].forEach(k => o[k] = $('#r_' + k).value || 0);
+    try { await api('updateReport', { id: r.id, r: o }); cclear(); closeModal(); toast('Отчёт изменён ✅', 'ok'); card(mid); } catch (x) { $('#r_e').textContent = x.message; }
+  });
+}
+function repDel(r, mid) {
+  modal(`<b style="font-size:18px">🗑 Удалить отчёт за ${dm(r.report_date)}?</b><div class="mu">Отчёт будет удалён из таблицы без восстановления.</div>
+    <div class="err" id="d_e"></div><button class="btn dg" id="d_y">Да, удалить</button><button class="btn o" id="d_n">Отмена</button>`);
+  $('#d_n').onclick = closeModal;
+  $('#d_y').onclick = () => run($('#d_y'), async () => {
+    try { await api('deleteReport', { id: r.id }); cclear(); closeModal(); toast('Отчёт удалён', 'ok'); card(mid); } catch (x) { $('#d_e').textContent = x.message; }
+  });
+}
+
 VIEWS.period = () => {
   const [f, t] = range();
   swr(`dash:${f}:${t}`, 'dashboard', { from: f, to: t }, (d, s) => {
@@ -387,6 +425,39 @@ VIEWS.settings = () => swr('settings', 'getSettings', {}, (d, s) => {
     catch (e) { toast(e.message, 'er'); }
   });
 }, () => shell('⚙️ Настройки', '', sk(4), RT));
+
+// ====== ОТЛОЖЕННАЯ ОТПРАВКА ======
+let flushing = false;
+async function flushPending() {
+  if (flushing || !localStorage.pend || !S.token) return;
+  let p; try { p = JSON.parse(localStorage.pend); } catch (e) { localStorage.removeItem('pend'); return; }
+  if (!S.user || p.uid !== S.user.id) return;
+  if (p.date !== iso(new Date())) { localStorage.removeItem('pend'); toast('Отчёт за ' + dm(p.date) + ' не был отправлен', 'er'); return; }
+  flushing = true;
+  try { const x = await api('saveReport', { r: p.r }); localStorage.removeItem('pend'); cset('my', x); toast('Отчёт отправлен ✅', 'ok'); }
+  catch (e) { if (!/Нет связи/.test(e.message)) { localStorage.removeItem('pend'); toast(e.message, 'er'); } }
+  flushing = false;
+}
+setInterval(flushPending, 15000); addEventListener('online', flushPending);
+
+// ====== ПОТЯНИТЕ ВНИЗ, ЧТОБЫ ОБНОВИТЬ ======
+const ptr = document.createElement('div'); ptr.className = 'ptr'; ptr.textContent = '⟳'; document.body.appendChild(ptr);
+let py = 0, pulling = false;
+const ptrReset = () => { ptr.classList.remove('spin'); ptr.style.opacity = 0; ptr.style.transform = 'translate(-50%,-60px)'; };
+addEventListener('touchstart', e => { if (window.scrollY <= 0 && !$('.ov') && S.user) { py = e.touches[0].clientY; pulling = true; } }, { passive: true });
+addEventListener('touchmove', e => {
+  if (!pulling) return; const d = e.touches[0].clientY - py;
+  if (d > 0) { ptr.style.opacity = Math.min(d / 70, 1); ptr.style.transform = `translate(-50%,${Math.min(d, 100) - 50}px) rotate(${d * 3}deg)`; }
+}, { passive: true });
+addEventListener('touchend', async e => {
+  if (!pulling) return; pulling = false;
+  if (e.changedTouches[0].clientY - py > 70) {
+    ptr.classList.add('spin'); ptr.style.opacity = 1; ptr.style.transform = 'translate(-50%,20px)';
+    await flushPending(); cclear(); S.nav++; S.edit = false;
+    (S.inCard && VIEWS.card ? VIEWS.card : VIEWS[S.tab])();
+    setTimeout(() => { ptrReset(); toast('Обновлено ✅', 'ok'); }, 900);
+  } else ptrReset();
+});
 
 // ====== СТАРТ ======
 (async () => {
