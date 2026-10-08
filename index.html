@@ -110,7 +110,7 @@ tr.cl{cursor:pointer;transition:background .15s}tr.cl:active{background:rgba(37,
 </style></head><body><div id="app"></div>
 <script>
 // ====== 1) ВСТАВЬТЕ СЮДА URL ВАШЕГО Apps Script (Web app) ======
-const API = 'https://script.google.com/macros/s/AKfycbwsVBWvOh9es56U8l6LgRBAbSQupX3vDLsEA_8ySVyebt3PcxfDMqsJrmHIOge-r5IL/exec';
+const API = 'https://script.google.com/macros/s/ВАШ_ID/exec';
 
 const $ = (s, r = document) => r.querySelector(s), $$ = s => document.querySelectorAll(s), app = $('#app');
 const pad = n => String(n).padStart(2, '0');
@@ -385,7 +385,7 @@ function repForm(r, mid) {
   $('#r_c').onclick = closeModal;
   $('#r_s').onclick = () => run($('#r_s'), async () => {
     const o = { comment: $('#r_comment').value }; ['calls', 'broadcasts', 'sales', 'sales_amount', 'sales_usd', 'awaiting_payment'].forEach(k => o[k] = $('#r_' + k).value || 0);
-    try { await api('updateReport', { id: r.id, r: o }); cclear(); closeModal(); toast('Отчёт изменён ✅', 'ok'); card(mid); } catch (x) { $('#r_e').textContent = x.message; }
+    try { await api('updateReport', { id: r.id, mid: r.manager_id, date: r.report_date, r: o }); cclear(); closeModal(); toast('Отчёт изменён ✅', 'ok'); card(mid); } catch (x) { $('#r_e').textContent = x.message; }
   });
 }
 function repDel(r, mid) {
@@ -393,7 +393,7 @@ function repDel(r, mid) {
     <div class="err" id="d_e"></div><button class="btn dg" id="d_y">Да, удалить</button><button class="btn o" id="d_n">Отмена</button>`);
   $('#d_n').onclick = closeModal;
   $('#d_y').onclick = () => run($('#d_y'), async () => {
-    try { await api('deleteReport', { id: r.id }); cclear(); closeModal(); toast('Отчёт удалён', 'ok'); card(mid); } catch (x) { $('#d_e').textContent = x.message; }
+    try { await api('deleteReport', { id: r.id, mid: r.manager_id, date: r.report_date }); cclear(); closeModal(); toast('Отчёт удалён', 'ok'); card(mid); } catch (x) { $('#d_e').textContent = x.message; }
   });
 }
 
