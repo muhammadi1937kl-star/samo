@@ -110,7 +110,7 @@ tr.cl{cursor:pointer;transition:background .15s}tr.cl:active{background:rgba(37,
 </style></head><body><div id="app"></div>
 <script>
 // ====== 1) ВСТАВЬТЕ СЮДА URL ВАШЕГО Apps Script (Web app) ======
-const API = 'https://script.google.com/macros/s/ВАШ_ID/exec';
+const API = 'https://script.google.com/macros/s/AKfycbwsVBWvOh9es56U8l6LgRBAbSQupX3vDLsEA_8ySVyebt3PcxfDMqsJrmHIOge-r5IL/exec';
 
 const $ = (s, r = document) => r.querySelector(s), $$ = s => document.querySelectorAll(s), app = $('#app');
 const pad = n => String(n).padStart(2, '0');
@@ -336,12 +336,11 @@ function card(id) {
       `<div class="c"><div class="lb">Продажи — последние 7 дней</div><div class="bars">${d.days.map(x => `<div style="height:${x.sales / mx * 100}%"></div>`).join('')}</div>
       <div class="bl">${d.days.map(x => `<span>${wd[new Date(x.date + 'T00:00').getDay()]}<br>${x.sales}</span>`).join('')}</div></div>` +
       (d.list[0] && d.list[0].comment ? `<div class="c"><div class="lb">Последний комментарий</div>${esc(d.list[0].comment)}</div>` : '') +
-      `<div class="lb">Отчёты за период (можно изменить или удалить)</div>` +
-      (d.list.map(x => `<div class="c rr"><div style="flex:1"><b>${dm(x.report_date)}</b> — 💰 ${x.sales} · ${fmt(x.sales_amount)} смн · $${fmt(x.sales_usd)}<div class="mu">📞 ${x.calls} · 📢 ${x.broadcasts} · ⏳ ${x.awaiting_payment}${x.edited_by ? ' · ✏️ ' + esc(x.edited_by) : ''}</div></div><span class="chip" data-e="${x.id}">✏️</span><span class="chip" data-d="${x.id}">🗑</span></div>`).join('') || '<div class="mu">Нет отчётов за период</div>') +
-      `<button class="btn p" id="eu">✏️ Изменить</button><button class="btn dg" id="du">🗑 Удалить менеджера</button>`, RT, s, back);
-    $('#eu').onclick = () => userForm(u); $('#du').onclick = () => delForm(u);
+      `<div class="lb">Отчёты за период (история сохраняется навсегда)</div>` +
+      (d.list.map(x => { const del = String(x.deleted || '0') === '1'; return `<div class="c rr" style="${del ? 'opacity:.65;border:1px dashed #ef4444' : ''}"><div style="flex:1"><b>${dm(x.report_date)}</b> — 💰 ${x.sales} · ${fmt(x.sales_amount)} смн · $${fmt(x.sales_usd)}${del ? ' · 🗑 УДАЛЁН — запись сохранена' : ''}<div class="mu">📞 ${x.calls} · 📢 ${x.broadcasts} · ⏳ ${x.awaiting_payment}${x.edited_by ? ' · ✏️ ' + esc(x.edited_by) : ''}${del && x.deleted_by ? ' · удалил: ' + esc(x.deleted_by) : ''}</div></div><span class="chip" data-e="${x.id}">${del ? '♻️' : '✏️'}</span></div>`; }).join('') || '<div class="mu">Нет отчётов за период</div>') +
+      `<button class="btn p" id="eu">✏️ Изменить</button><button class="btn o" id="du">⛔ Отключить менеджера</button>`, RT, s, back);
+    $('#eu').onclick = () => userForm(u); $('#du').onclick = () => deactivateForm(u);
     $$('[data-e]').forEach(el => el.onclick = () => repForm(d.list.find(r => r.id === el.dataset.e), u.id));
-    $$('[data-d]').forEach(el => el.onclick = () => repDel(d.list.find(r => r.id === el.dataset.d), u.id));
     if (!legacy) {
       let shown = false;
       $('#eye').onclick = () => { shown = !shown; $('#pv').textContent = shown ? u.password : '••••••'; };
@@ -368,33 +367,47 @@ function userForm(u) {
     } catch (x) { $('#u_e').textContent = x.message; }
   });
 }
-function delForm(u) {
-  modal(`<b style="font-size:18px">🗑 Удалить менеджера?</b><div class="mu">${esc(u.name)} и ВСЕ его отчёты будут удалены навсегда. Если нужно только закрыть вход — нажмите «Изменить» и отключите менеджера.</div>
-    <div class="err" id="d_e"></div><button class="btn dg" id="d_y">Да, удалить</button><button class="btn o" id="d_n">Отмена</button>`);
+function deactivateForm(u) {
+  const active = +u.active;
+  modal(`<b style="font-size:18px">${active ? '⛔ Отключить менеджера?' : '✅ Включить менеджера?'}</b><div class="mu">${esc(u.name)}: ${active ? 'вход будет закрыт, но все отчёты и история останутся навсегда.' : 'вход будет снова разрешён.'}</div>
+    <div class="err" id="d_e"></div><button class="btn ${active ? 'dg' : 'p'}" id="d_y">${active ? 'Отключить' : 'Включить'}</button><button class="btn o" id="d_n">Отмена</button>`);
   $('#d_n').onclick = closeModal;
   $('#d_y').onclick = () => run($('#d_y'), async () => {
-    try { await api('deleteUser', { id: u.id }); cclear(); closeModal(); toast('Менеджер удалён', 'ok'); go('team'); }
+    try { await api('updateUser', { id: u.id, name: u.name, phone: u.phone, password: '', active: active ? '0' : '1' }); cclear(); closeModal(); toast(active ? 'Менеджер отключён' : 'Менеджер включён', 'ok'); card(u.id); }
     catch (x) { $('#d_e').textContent = x.message; }
   });
 }
 
+
 function repForm(r, mid) {
   const f = (k, l) => `<label class="f"><span>${l}</span><input id="r_${k}" type="number" min="0" step="any" inputmode="decimal" value="${esc(r[k])}"></label>`;
-  modal(`<b style="font-size:18px">✏️ Отчёт за ${dm(r.report_date)}</b>${f('calls', '📞 Звонки')}${f('broadcasts', '📢 Рассылки/Переписки')}${f('sales', '💰 Продажи')}${f('sales_amount', '💵 Сомони')}${f('sales_usd', '💲 Доллары')}${f('awaiting_payment', '⏳ Ожидают оплаты')}
-    <textarea id="r_comment" placeholder="Комментарий">${esc(r.comment)}</textarea><div class="err" id="r_e"></div><button class="btn p" id="r_s">Сохранить</button><button class="btn o" id="r_c">Отмена</button>`);
+  const isDeleted = String(r.deleted || '0') === '1';
+  modal(`<b style="font-size:18px">✏️ Отчёт за ${dm(r.report_date)}</b>${isDeleted ? '<div class="err">🗑 Этот отчёт помечен удалённым, но строка сохранена в Google Sheets. Нажмите «Сохранить» — отчёт восстановится и изменится.</div>' : ''}${f('calls', '📞 Звонки')}${f('broadcasts', '📢 Рассылки/Переписки')}${f('sales', '💰 Продажи')}${f('sales_amount', '💵 Сомони')}${f('sales_usd', '💲 Доллары')}${f('awaiting_payment', '⏳ Ожидают оплаты')}
+    <textarea id="r_comment" placeholder="Комментарий">${esc(r.comment)}</textarea><div class="err" id="r_e"></div>
+    <button class="btn p" id="r_s">Сохранить изменения</button>
+    <button class="btn dg" id="r_d">🗑 Удалить отчёт</button>
+    <button class="btn o" id="r_c">Отмена</button>`);
   $('#r_c').onclick = closeModal;
   $('#r_s').onclick = () => run($('#r_s'), async () => {
     const o = { comment: $('#r_comment').value }; ['calls', 'broadcasts', 'sales', 'sales_amount', 'sales_usd', 'awaiting_payment'].forEach(k => o[k] = $('#r_' + k).value || 0);
-    try { await api('updateReport', { id: r.id, mid: r.manager_id, date: r.report_date, r: o }); cclear(); closeModal(); toast('Отчёт изменён ✅', 'ok'); card(mid); } catch (x) { $('#r_e').textContent = x.message; }
+    try {
+      await api('updateReport', { id: r.id, r: o });
+      cclear(); closeModal(); toast(isDeleted ? 'Отчёт восстановлен и изменён ✅' : 'Отчёт изменён и сохранён в Google Sheets ✅', 'ok'); card(mid);
+    } catch (x) { $('#r_e').textContent = x.message; }
   });
-}
-function repDel(r, mid) {
-  modal(`<b style="font-size:18px">🗑 Удалить отчёт за ${dm(r.report_date)}?</b><div class="mu">Отчёт будет удалён из таблицы без восстановления.</div>
-    <div class="err" id="d_e"></div><button class="btn dg" id="d_y">Да, удалить</button><button class="btn o" id="d_n">Отмена</button>`);
-  $('#d_n').onclick = closeModal;
-  $('#d_y').onclick = () => run($('#d_y'), async () => {
-    try { await api('deleteReport', { id: r.id, mid: r.manager_id, date: r.report_date }); cclear(); closeModal(); toast('Отчёт удалён', 'ok'); card(mid); } catch (x) { $('#d_e').textContent = x.message; }
-  });
+  $('#r_d').onclick = () => {
+    modal(`<b style="font-size:18px">🗑 Удалить отчёт за ${dm(r.report_date)}?</b>
+      <div class="mu">Отчёт НЕ удаляется физически из <b>daily_reports</b>. Строка останется в Google Sheets навсегда, а отчёт будет помечен как удалённый и исчезнет только из активных итогов. В истории приложения он останется. Изменение также запишется в <b>report_changes</b>.</div>
+      <div class="err" id="rd_e"></div>
+      <button class="btn dg" id="rd_y">Да, удалить</button><button class="btn o" id="rd_n">Отмена</button>`);
+    $('#rd_n').onclick = closeModal;
+    $('#rd_y').onclick = () => run($('#rd_y'), async () => {
+      try {
+        await api('deleteReport', { id: r.id });
+        cclear(); closeModal(); toast('Отчёт помечен удалённым. Строка сохранена в Google Sheets и истории ✅', 'ok'); setTimeout(() => card(mid), 150);
+      } catch (x) { $('#rd_e').textContent = x.message; }
+    });
+  };
 }
 
 VIEWS.period = () => {
