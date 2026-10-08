@@ -115,7 +115,13 @@ const API = 'https://script.google.com/macros/s/AKfycbwsVBWvOh9es56U8l6LgRBAbSQu
 const $ = (s, r = document) => r.querySelector(s), $$ = s => document.querySelectorAll(s), app = $('#app');
 const pad = n => String(n).padStart(2, '0');
 const iso = d => d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate());
-const S = { token: localStorage.token || '', user: null, st: {}, today: iso(new Date()), tab: '', range: '7', from: '', to: '', nav: 0, edit: false, rep: null, draft: null, dd: null, cid: '' };
+const S = { token: localStorage.token || '', user: null, st: {}, skew: +localStorage.skew || 0, tz: +localStorage.tz || 0, get today() { return sToday(); }, tab: '', range: '7', from: '', to: '', nav: 0, edit: false, rep: null, draft: null, dd: null, cid: '' };
+// Часы СЕРВЕРА: «сегодня» везде одинаково, даже если часы телефона/пояс другие
+const sNow = () => new Date(Date.now() + (S.skew || 0) + (S.tz || 0) * 60000);
+const sDate = ms => { const d = new Date(ms); return d.getUTCFullYear() + '-' + pad(d.getUTCMonth() + 1) + '-' + pad(d.getUTCDate()); };
+const sToday = () => sDate(sNow().getTime());
+const sDaysAgo = n => sDate(sNow().getTime() - n * 864e5);
+function syncClock(c) { if (!c || !c.nowMs) return; S.skew = c.nowMs - Date.now(); S.tz = c.tzMin || 0; localStorage.skew = S.skew; localStorage.tz = S.tz; }
 const fmt = n => Number(n || 0).toLocaleString('ru');
 const dm = d => d.slice(8, 10) + '.' + d.slice(5, 7);
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -199,12 +205,12 @@ const VIEWS = {};
 function go(t) { S.nav++; S.tab = t; S.edit = false; S.inCard = false; VIEWS[t](); }
 function pick(r, fn) { S.range = r; S.nav++; VIEWS[fn](); }
 function range() {
-  const t = new Date(), y = new Date(t - 864e5);
-  if (S.range === 'today') return [iso(t), iso(t)];
-  if (S.range === 'yest') return [iso(y), iso(y)];
-  if (S.range === '7') return [iso(new Date(t - 6 * 864e5)), iso(t)];
-  if (S.range === 'month') return [iso(t).slice(0, 8) + '01', iso(t)];
-  return [S.from || iso(t), S.to || iso(t)];
+  const t = sToday(), y = sDaysAgo(1);
+  if (S.range === 'today') return [t, t];
+  if (S.range === 'yest') return [y, y];
+  if (S.range === '7') return [sDaysAgo(6), t];
+  if (S.range === 'month') return [t.slice(0, 8) + '01', t];
+  return [S.from || t, S.to || t];
 }
 const chips = (fn, list) => `<div class="chips">${list.map(x => `<span class="chip ${S.range === x[0] ? 'on' : ''}" onclick="pick('${x[0]}','${fn}')">${x[1]}</span>`).join('')}</div>`;
 const DCH = [['today', 'Сегодня'], ['yest', 'Вчера'], ['7', '7 дней'], ['month', 'Месяц']];
@@ -220,10 +226,11 @@ function login(err = '') {
   $('#bt').onclick = () => run($('#bt'), async () => {
     $('#er').textContent = '';
     try {
-      const [f, t] = range(), r = await api('login', { phone: $('#ph').value, password: $('#pw').value, from: f, to: t });
+      const r = await api('login', { phone: $('#ph').value, password: $('#pw').value });
+      syncClock(r.clock);
       S.token = r.token; S.user = r.user; S.st = r.settings;
       localStorage.token = r.token; localStorage.user = JSON.stringify(r.user); localStorage.st = JSON.stringify(r.settings);
-      cset(r.user.role === 'rop' ? `dash:${f}:${t}` : 'my', r.init);
+      cset(r.user.role === 'rop' ? `dash:${r.initRange.from}:${r.initRange.to}` : 'my', r.init);
       start();
     } catch (e) { $('#er').textContent = e.message; }
   });
@@ -243,9 +250,9 @@ function start() {
 const FIELDS = ['calls', 'broadcasts', 'sales', 'awaiting_payment'];
 const CUR = [['sales_amount', 'сомони'], ['sales_usd', '$']]; // чтобы добавить валюту: новая колонка в таблице + строка здесь
 const num = (id, l, v) => `<label class="f"><span>${l}</span><input id="${id}" type="number" min="0" step="any" inputmode="decimal" placeholder="0" value="${esc(v)}"></label>`;
-VIEWS.report = () => swr('my', 'myReport', {}, (d, s) => reportView(d.report, s), () => shell('Отчёт', dm(S.today), sk(4), MT));
+VIEWS.report = () => swr('my', 'myReport', {}, (d, s) => reportView(d.report && String(d.report.report_date).startsWith(sToday()) ? d.report : null, s), () => shell('Отчёт', dm(S.today), sk(4), MT));
 function reportView(r, silent) {
-  S.rep = r; const t = S.today, h = new Date().getHours();
+  S.rep = r; const t = S.today, h = sNow().getUTCHours();
   if (r && !S.edit) {
     shell('Отчёт', dm(t) + '.' + t.slice(0, 4), `<div class="ctr big pop" style="margin-top:16px">✅</div>
     <div class="ctr"><b>Отчёт за ${dm(t)} отправлен</b><div class="mu">Время отправки: ${r.submitted_at.slice(11)}</div></div>
@@ -277,8 +284,8 @@ function reportView(r, silent) {
   show();
   $('#bt').onclick = () => {
     const o = { comment: $('#comment').value }; FIELDS.forEach(k => o[k] = $('#' + k).value || 0); CUR.forEach(c => o[c[0]] = M[c[0]] || 0);
-    const hm = pad(new Date().getHours()) + ':' + pad(new Date().getMinutes()), prev = r;
-    const opt = { ...(prev || {}), ...o, submitted_at: prev ? prev.submitted_at : t + ' ' + hm, updated_at: t + ' ' + hm };
+    const hm = pad(sNow().getUTCHours()) + ':' + pad(sNow().getUTCMinutes()), prev = r;
+    const opt = { ...(prev || {}), ...o, report_date: t, submitted_at: prev ? prev.submitted_at : t + ' ' + hm, updated_at: t + ' ' + hm };
     S.edit = false; cset('my', { report: opt }); reportView(opt); toast('Отчёт сохранён ✅', 'ok'); // сразу показываем результат
     localStorage.pend = JSON.stringify({ date: t, r: o, uid: S.user.id }); // храним на устройстве, пока сервер не подтвердит
     api('saveReport', { r: o }).then(x => { localStorage.removeItem('pend'); cset('my', x); }).catch(e => {
@@ -336,11 +343,15 @@ function card(id) {
       `<div class="c"><div class="lb">Продажи — последние 7 дней</div><div class="bars">${d.days.map(x => `<div style="height:${x.sales / mx * 100}%"></div>`).join('')}</div>
       <div class="bl">${d.days.map(x => `<span>${wd[new Date(x.date + 'T00:00').getDay()]}<br>${x.sales}</span>`).join('')}</div></div>` +
       (d.list[0] && d.list[0].comment ? `<div class="c"><div class="lb">Последний комментарий</div>${esc(d.list[0].comment)}</div>` : '') +
-      `<div class="lb">Отчёты за период (история сохраняется навсегда)</div>` +
-      (d.list.map(x => { const del = String(x.deleted || '0') === '1'; return `<div class="c rr" style="${del ? 'opacity:.65;border:1px dashed #ef4444' : ''}"><div style="flex:1"><b>${dm(x.report_date)}</b> — 💰 ${x.sales} · ${fmt(x.sales_amount)} смн · $${fmt(x.sales_usd)}${del ? ' · 🗑 УДАЛЁН — запись сохранена' : ''}<div class="mu">📞 ${x.calls} · 📢 ${x.broadcasts} · ⏳ ${x.awaiting_payment}${x.edited_by ? ' · ✏️ ' + esc(x.edited_by) : ''}${del && x.deleted_by ? ' · удалил: ' + esc(x.deleted_by) : ''}</div></div><span class="chip" data-e="${x.id}">${del ? '♻️' : '✏️'}</span></div>`; }).join('') || '<div class="mu">Нет отчётов за период</div>') +
-      `<button class="btn p" id="eu">✏️ Изменить</button><button class="btn o" id="du">⛔ Отключить менеджера</button>`, RT, s, back);
-    $('#eu').onclick = () => userForm(u); $('#du').onclick = () => deactivateForm(u);
+      `<div class="lb">Отчёты за период (можно изменить или удалить)</div>` +
+      (d.list.map(x => { const del = x.deleted === '1'; return `<div class="c rr" style="${del ? 'opacity:.6' : ''}"><div style="flex:1"><b>${dm(x.report_date)}</b>${del ? ' <span class="tg">🗑 удалён' + (x.deleted_by ? ' · ' + esc(x.deleted_by) : '') + '</span>' : ''} — 💰 ${x.sales} · ${fmt(x.sales_amount)} смн · $${fmt(x.sales_usd)}<div class="mu">📞 ${x.calls} · 📢 ${x.broadcasts} · ⏳ ${x.awaiting_payment}${x.edited_by ? ' · ✏️ ' + esc(x.edited_by) : ''}</div></div><span class="chip" data-e="${x.id}">✏️</span>${del ? `<span class="chip" data-r="${x.id}">↩️</span>` : `<span class="chip" data-d="${x.id}">🗑</span>`}</div>`; }).join('') || '<div class="mu">Нет отчётов за период</div>') +
+      `<button class="btn p" id="eu">✏️ Изменить</button><button class="btn dg" id="du">🗑 Удалить менеджера</button>`, RT, s, back);
+    $('#eu').onclick = () => userForm(u); $('#du').onclick = () => delForm(u);
     $$('[data-e]').forEach(el => el.onclick = () => repForm(d.list.find(r => r.id === el.dataset.e), u.id));
+    $$('[data-d]').forEach(el => el.onclick = () => repDel(d.list.find(r => r.id === el.dataset.d), u.id));
+    $$('[data-r]').forEach(el => el.onclick = async () => {
+      try { await api('restoreReport', { id: el.dataset.r }); cclear(); toast('Отчёт восстановлен ✅', 'ok'); card(u.id); } catch (e) { toast(e.message, 'er'); }
+    });
     if (!legacy) {
       let shown = false;
       $('#eye').onclick = () => { shown = !shown; $('#pv').textContent = shown ? u.password : '••••••'; };
@@ -367,47 +378,33 @@ function userForm(u) {
     } catch (x) { $('#u_e').textContent = x.message; }
   });
 }
-function deactivateForm(u) {
-  const active = +u.active;
-  modal(`<b style="font-size:18px">${active ? '⛔ Отключить менеджера?' : '✅ Включить менеджера?'}</b><div class="mu">${esc(u.name)}: ${active ? 'вход будет закрыт, но все отчёты и история останутся навсегда.' : 'вход будет снова разрешён.'}</div>
-    <div class="err" id="d_e"></div><button class="btn ${active ? 'dg' : 'p'}" id="d_y">${active ? 'Отключить' : 'Включить'}</button><button class="btn o" id="d_n">Отмена</button>`);
+function delForm(u) {
+  modal(`<b style="font-size:18px">🗑 Удалить менеджера?</b><div class="mu">${esc(u.name)} будет скрыт из списка и не сможет войти. Все его отчёты сохранятся в таблице.</div>
+    <div class="err" id="d_e"></div><button class="btn dg" id="d_y">Да, удалить</button><button class="btn o" id="d_n">Отмена</button>`);
   $('#d_n').onclick = closeModal;
   $('#d_y').onclick = () => run($('#d_y'), async () => {
-    try { await api('updateUser', { id: u.id, name: u.name, phone: u.phone, password: '', active: active ? '0' : '1' }); cclear(); closeModal(); toast(active ? 'Менеджер отключён' : 'Менеджер включён', 'ok'); card(u.id); }
+    try { await api('deleteUser', { id: u.id }); cclear(); closeModal(); toast('Менеджер удалён', 'ok'); go('team'); }
     catch (x) { $('#d_e').textContent = x.message; }
   });
 }
 
-
 function repForm(r, mid) {
   const f = (k, l) => `<label class="f"><span>${l}</span><input id="r_${k}" type="number" min="0" step="any" inputmode="decimal" value="${esc(r[k])}"></label>`;
-  const isDeleted = String(r.deleted || '0') === '1';
-  modal(`<b style="font-size:18px">✏️ Отчёт за ${dm(r.report_date)}</b>${isDeleted ? '<div class="err">🗑 Этот отчёт помечен удалённым, но строка сохранена в Google Sheets. Нажмите «Сохранить» — отчёт восстановится и изменится.</div>' : ''}${f('calls', '📞 Звонки')}${f('broadcasts', '📢 Рассылки/Переписки')}${f('sales', '💰 Продажи')}${f('sales_amount', '💵 Сомони')}${f('sales_usd', '💲 Доллары')}${f('awaiting_payment', '⏳ Ожидают оплаты')}
-    <textarea id="r_comment" placeholder="Комментарий">${esc(r.comment)}</textarea><div class="err" id="r_e"></div>
-    <button class="btn p" id="r_s">Сохранить изменения</button>
-    <button class="btn dg" id="r_d">🗑 Удалить отчёт</button>
-    <button class="btn o" id="r_c">Отмена</button>`);
+  modal(`<b style="font-size:18px">✏️ Отчёт за ${dm(r.report_date)}</b>${f('calls', '📞 Звонки')}${f('broadcasts', '📢 Рассылки/Переписки')}${f('sales', '💰 Продажи')}${f('sales_amount', '💵 Сомони')}${f('sales_usd', '💲 Доллары')}${f('awaiting_payment', '⏳ Ожидают оплаты')}
+    <textarea id="r_comment" placeholder="Комментарий">${esc(r.comment)}</textarea><div class="err" id="r_e"></div><button class="btn p" id="r_s">Сохранить</button><button class="btn o" id="r_c">Отмена</button>`);
   $('#r_c').onclick = closeModal;
   $('#r_s').onclick = () => run($('#r_s'), async () => {
     const o = { comment: $('#r_comment').value }; ['calls', 'broadcasts', 'sales', 'sales_amount', 'sales_usd', 'awaiting_payment'].forEach(k => o[k] = $('#r_' + k).value || 0);
-    try {
-      await api('updateReport', { id: r.id, r: o });
-      cclear(); closeModal(); toast(isDeleted ? 'Отчёт восстановлен и изменён ✅' : 'Отчёт изменён и сохранён в Google Sheets ✅', 'ok'); card(mid);
-    } catch (x) { $('#r_e').textContent = x.message; }
+    try { await api('updateReport', { id: r.id, r: o }); cclear(); closeModal(); toast('Отчёт изменён ✅', 'ok'); card(mid); } catch (x) { $('#r_e').textContent = x.message; }
   });
-  $('#r_d').onclick = () => {
-    modal(`<b style="font-size:18px">🗑 Удалить отчёт за ${dm(r.report_date)}?</b>
-      <div class="mu">Отчёт НЕ удаляется физически из <b>daily_reports</b>. Строка останется в Google Sheets навсегда, а отчёт будет помечен как удалённый и исчезнет только из активных итогов. В истории приложения он останется. Изменение запишется в <b>report_changes</b>, а копия удалённой версии — в <b>report_archive</b>.</div>
-      <div class="err" id="rd_e"></div>
-      <button class="btn dg" id="rd_y">Да, удалить</button><button class="btn o" id="rd_n">Отмена</button>`);
-    $('#rd_n').onclick = closeModal;
-    $('#rd_y').onclick = () => run($('#rd_y'), async () => {
-      try {
-        await api('deleteReport', { id: r.id });
-        cclear(); closeModal(); toast('Отчёт помечен удалённым. Строка сохранена в daily_reports, копия — в report_archive ✅', 'ok'); setTimeout(() => card(mid), 150);
-      } catch (x) { $('#rd_e').textContent = x.message; }
-    });
-  };
+}
+function repDel(r, mid) {
+  modal(`<b style="font-size:18px">🗑 Удалить отчёт за ${dm(r.report_date)}?</b><div class="mu">Отчёт будет скрыт из статистики. Его можно вернуть кнопкой ↩️, все версии сохраняются в журнале report_changes.</div>
+    <div class="err" id="d_e"></div><button class="btn dg" id="d_y">Да, удалить</button><button class="btn o" id="d_n">Отмена</button>`);
+  $('#d_n').onclick = closeModal;
+  $('#d_y').onclick = () => run($('#d_y'), async () => {
+    try { await api('deleteReport', { id: r.id }); cclear(); closeModal(); toast('Отчёт удалён', 'ok'); card(mid); } catch (x) { $('#d_e').textContent = x.message; }
+  });
 }
 
 VIEWS.period = () => {
@@ -445,7 +442,7 @@ async function flushPending() {
   if (flushing || !localStorage.pend || !S.token) return;
   let p; try { p = JSON.parse(localStorage.pend); } catch (e) { localStorage.removeItem('pend'); return; }
   if (!S.user || p.uid !== S.user.id) return;
-  if (p.date !== iso(new Date())) { localStorage.removeItem('pend'); toast('Отчёт за ' + dm(p.date) + ' не был отправлен', 'er'); return; }
+  if (p.date !== sToday()) { localStorage.removeItem('pend'); toast('Отчёт за ' + dm(p.date) + ' не был отправлен', 'er'); return; }
   flushing = true;
   try { const x = await api('saveReport', { r: p.r }); localStorage.removeItem('pend'); cset('my', x); toast('Отчёт отправлен ✅', 'ok'); }
   catch (e) { if (!/Нет связи/.test(e.message)) { localStorage.removeItem('pend'); toast(e.message, 'er'); } }
@@ -476,7 +473,7 @@ addEventListener('touchend', async e => {
 (async () => {
   if (S.token) {
     try { S.user = JSON.parse(localStorage.user); S.st = JSON.parse(localStorage.st || '{}'); } catch (e) { S.user = null; }
-    const chk = () => api('me').then(r => { S.user = r.user; S.st = r.settings; localStorage.user = JSON.stringify(r.user); localStorage.st = JSON.stringify(r.settings); });
+    const chk = () => api('me').then(r => { syncClock(r.clock); S.user = r.user; S.st = r.settings; localStorage.user = JSON.stringify(r.user); localStorage.st = JSON.stringify(r.settings); });
     if (S.user) { start(); chk().catch(() => {}); return; } // мгновенно из сохранённого
     try { await chk(); return start(); } catch (e) {}
   }
