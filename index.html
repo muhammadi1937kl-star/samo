@@ -397,14 +397,14 @@ function repForm(r, mid) {
   });
   $('#r_d').onclick = () => {
     modal(`<b style="font-size:18px">🗑 Удалить отчёт за ${dm(r.report_date)}?</b>
-      <div class="mu">Отчёт НЕ удаляется физически из <b>daily_reports</b>. Строка останется в Google Sheets навсегда, а отчёт будет помечен как удалённый и исчезнет только из активных итогов. В истории приложения он останется. Изменение также запишется в <b>report_changes</b>.</div>
+      <div class="mu">Отчёт НЕ удаляется физически из <b>daily_reports</b>. Строка останется в Google Sheets навсегда, а отчёт будет помечен как удалённый и исчезнет только из активных итогов. В истории приложения он останется. Изменение запишется в <b>report_changes</b>, а копия удалённой версии — в <b>report_archive</b>.</div>
       <div class="err" id="rd_e"></div>
       <button class="btn dg" id="rd_y">Да, удалить</button><button class="btn o" id="rd_n">Отмена</button>`);
     $('#rd_n').onclick = closeModal;
     $('#rd_y').onclick = () => run($('#rd_y'), async () => {
       try {
         await api('deleteReport', { id: r.id });
-        cclear(); closeModal(); toast('Отчёт помечен удалённым. Строка сохранена в Google Sheets и истории ✅', 'ok'); setTimeout(() => card(mid), 150);
+        cclear(); closeModal(); toast('Отчёт помечен удалённым. Строка сохранена в daily_reports, копия — в report_archive ✅', 'ok'); setTimeout(() => card(mid), 150);
       } catch (x) { $('#rd_e').textContent = x.message; }
     });
   };
