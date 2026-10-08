@@ -9,18 +9,27 @@
 :root{--bg:#f4f6fa;--card:#fff;--tx:#111827;--mu:#6b7280;--bd:#e5e7eb;--pr:#2563eb;--ok:#16a34a;--wn:#f59e0b;--er:#dc2626}
 @media(prefers-color-scheme:dark){:root{--bg:#0f172a;--card:#1e293b;--tx:#f1f5f9;--mu:#94a3b8;--bd:#334155}}
 *{box-sizing:border-box}
+html,body{max-width:100%;overflow-x:hidden}
 body{margin:0;background:var(--bg);color:var(--tx);font:15px Roboto,system-ui,sans-serif}
 button,input,textarea{font-family:inherit}
-#app{max-width:480px;margin:auto;min-height:100vh;display:flex;flex-direction:column}
+#app{max-width:480px;width:100%;margin:auto;min-height:100vh;display:flex;flex-direction:column}
 .top{padding:16px;background:var(--pr);color:#fff;display:flex;align-items:center;gap:6px}
 .top small{display:block;opacity:.85;margin-top:2px}
 .bk{font-size:30px;line-height:1;padding:0 10px 4px 0;cursor:pointer}
 .bd{flex:1;padding:14px;padding-bottom:80px;display:flex;flex-direction:column;gap:10px}
+.bd>*{min-width:0;max-width:100%}
 .c{background:var(--card);border:1px solid var(--bd);border-radius:12px;padding:12px}
 .mu{color:var(--mu);font-size:13px}.lb{font-size:12px;color:var(--mu);text-transform:uppercase;margin-top:6px}
 .f{display:flex;justify-content:space-between;align-items:center;gap:8px;background:var(--card);border:1px solid var(--bd);border-radius:10px;padding:0 12px;min-height:46px;transition:.2s}
 .f input{width:140px;min-width:0;text-align:right;border:0;background:none;color:var(--tx);font-weight:700;font-size:16px;outline:none}
-.f2{background:var(--card);border:1px solid var(--bd);border-radius:10px;padding:10px 12px}
+.f2{background:var(--card);border:1px solid var(--bd);border-radius:10px;padding:10px 12px;min-width:0}
+.seg{display:flex;background:var(--bd);border-radius:10px;padding:3px;margin-top:8px;gap:3px}
+.sg{flex:1;text-align:center;padding:9px 0;border-radius:8px;cursor:pointer;font-weight:700;font-size:14px;color:var(--mu);transition:background .2s,color .2s,transform .12s;user-select:none}
+.sg:active{transform:scale(.95)}.sg.on{background:var(--pr);color:#fff;box-shadow:0 2px 6px rgba(37,99,235,.35)}
+.mv{display:flex;align-items:center;border:1px solid var(--bd);border-radius:10px;padding:0 12px;height:54px;margin-top:8px;transition:.2s}
+.mv:focus-within{border-color:var(--pr);box-shadow:0 0 0 3px rgba(37,99,235,.18)}
+.mv input{flex:1;min-width:0;width:100%;border:0;background:none;color:var(--tx);font-weight:700;font-size:22px;outline:none;text-align:right}
+.mv em{font-style:normal;color:var(--mu);margin-left:8px;font-size:15px;min-width:44px}
 .mi{display:flex;gap:8px;margin-top:6px}
 .mi label{flex:1;display:flex;align-items:center;border:1px solid var(--bd);border-radius:8px;padding:0 10px;height:44px;transition:.2s}
 .mi input{flex:1;min-width:0;border:0;background:none;color:var(--tx);font-weight:700;font-size:16px;outline:none;text-align:right}
@@ -219,7 +228,8 @@ function start() {
 }
 
 // ====== МЕНЕДЖЕР ======
-const FIELDS = ['calls', 'broadcasts', 'sales', 'sales_amount', 'sales_usd', 'awaiting_payment'];
+const FIELDS = ['calls', 'broadcasts', 'sales', 'awaiting_payment'];
+const CUR = [['sales_amount', 'сомони'], ['sales_usd', '$']]; // чтобы добавить валюту: новая колонка в таблице + строка здесь
 const num = (id, l, v) => `<label class="f"><span>${l}</span><input id="${id}" type="number" min="0" step="any" inputmode="decimal" placeholder="0" value="${esc(v)}"></label>`;
 VIEWS.report = () => swr('my', 'myReport', {}, (d, s) => reportView(d.report, s), () => shell('Отчёт', dm(S.today), sk(4), MT));
 function reportView(r, silent) {
@@ -237,12 +247,24 @@ function reportView(r, silent) {
   shell(`${h < 12 ? '☀️ Доброе утро' : h < 18 ? '🌤 Добрый день' : '🌙 Добрый вечер'}, ${esc(S.user.name)}!`, `Сегодня ${dm(t)}.${t.slice(0, 4)} · сдать до ${esc(S.st.deadline)}`,
     `<div class="lb">Активность</div>${num('calls', '📞 Звонки', v.calls)}${num('broadcasts', '📢 Рассылки/Переписки', v.broadcasts)}
     <div class="lb">Результат</div>${num('sales', '💰 Продажи', v.sales)}
-    <div class="f2"><span>💵 Сумма продаж</span><div class="mi"><label><input id="sales_amount" type="number" min="0" step="any" inputmode="decimal" placeholder="0" value="${esc(v.sales_amount)}"><em>сомони</em></label><label><input id="sales_usd" type="number" min="0" step="any" inputmode="decimal" placeholder="0" value="${esc(v.sales_usd)}"><em>$</em></label></div></div>
+    <div class="f2"><span>💵 Сумма продаж</span>
+    <div class="seg">${CUR.map((c, i) => `<span class="sg ${i ? '' : 'on'}" data-k="${c[0]}">${c[1]}</span>`).join('')}</div>
+    <label class="mv"><input id="mv" type="number" min="0" step="any" inputmode="decimal" placeholder="0"><em id="mc"></em></label>
+    <div class="mu" id="ms" style="margin-top:6px"></div></div>
     ${num('awaiting_payment', '⏳ Ожидают оплаты', v.awaiting_payment)}
     <textarea id="comment" placeholder="📝 Комментарий…">${esc(v.comment)}</textarea><div class="err" id="er"></div>
     <button class="btn" id="bt">🟢 ${r ? 'СОХРАНИТЬ ИЗМЕНЕНИЯ' : 'ОТПРАВИТЬ ОТЧЁТ'}</button>`, MT, silent);
+  const M = {}; CUR.forEach(c => M[c[0]] = v[c[0]] || ''); let cur = CUR[0][0];
+  const show = () => {
+    $('#mv').value = M[cur]; $('#mc').textContent = CUR.find(c => c[0] === cur)[1];
+    $$('.sg').forEach(x => x.classList.toggle('on', x.dataset.k === cur));
+    $('#ms').textContent = 'Итого: ' + CUR.map(c => fmt(M[c[0]]) + ' ' + c[1]).join(' · ');
+  };
+  $$('.sg').forEach(x => x.onclick = () => { cur = x.dataset.k; show(); $('#mv').focus(); });
+  $('#mv').oninput = e => { M[cur] = e.target.value; $('#ms').textContent = 'Итого: ' + CUR.map(c => fmt(M[c[0]]) + ' ' + c[1]).join(' · '); };
+  show();
   $('#bt').onclick = () => {
-    const o = { comment: $('#comment').value }; FIELDS.forEach(k => o[k] = $('#' + k).value || 0);
+    const o = { comment: $('#comment').value }; FIELDS.forEach(k => o[k] = $('#' + k).value || 0); CUR.forEach(c => o[c[0]] = M[c[0]] || 0);
     const hm = pad(new Date().getHours()) + ':' + pad(new Date().getMinutes()), prev = r;
     const opt = { ...(prev || {}), ...o, submitted_at: prev ? prev.submitted_at : t + ' ' + hm, updated_at: t + ' ' + hm };
     S.edit = false; cset('my', { report: opt }); reportView(opt); toast('Отчёт сохранён ✅', 'ok'); // сразу показываем результат
