@@ -2,80 +2,181 @@
 <html lang="ru"><head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<link rel="preconnect" href="https://script.google.com">
+<link rel="preconnect" href="https://script.googleusercontent.com">
 <title>Отчёты отдела</title>
 <style>
 :root{--bg:#f4f6fa;--card:#fff;--tx:#111827;--mu:#6b7280;--bd:#e5e7eb;--pr:#2563eb;--ok:#16a34a;--wn:#f59e0b;--er:#dc2626}
 @media(prefers-color-scheme:dark){:root{--bg:#0f172a;--card:#1e293b;--tx:#f1f5f9;--mu:#94a3b8;--bd:#334155}}
-*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--tx);font:15px Roboto,system-ui,sans-serif}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--tx);font:15px Roboto,system-ui,sans-serif}
+button,input,textarea{font-family:inherit}
 #app{max-width:480px;margin:auto;min-height:100vh;display:flex;flex-direction:column}
-.top{padding:16px;background:var(--pr);color:#fff}.top small{display:block;opacity:.85;margin-top:2px}
+.top{padding:16px;background:var(--pr);color:#fff;display:flex;align-items:center;gap:6px}
+.top small{display:block;opacity:.85;margin-top:2px}
+.bk{font-size:30px;line-height:1;padding:0 10px 4px 0;cursor:pointer}
 .bd{flex:1;padding:14px;padding-bottom:80px;display:flex;flex-direction:column;gap:10px}
 .c{background:var(--card);border:1px solid var(--bd);border-radius:12px;padding:12px}
 .mu{color:var(--mu);font-size:13px}.lb{font-size:12px;color:var(--mu);text-transform:uppercase;margin-top:6px}
-.f{display:flex;justify-content:space-between;align-items:center;background:var(--card);border:1px solid var(--bd);border-radius:10px;padding:0 12px;min-height:44px}
-.f input{width:110px;text-align:right;border:0;background:none;color:var(--tx);font:700 16px inherit;outline:none}
-input.in,textarea{width:100%;height:44px;border:1px solid var(--bd);border-radius:10px;padding:0 12px;background:var(--card);color:var(--tx);font:inherit}
-textarea{height:70px;padding:10px}
-.btn{height:48px;border:0;border-radius:10px;background:var(--ok);color:#fff;font:700 15px inherit;width:100%;cursor:pointer}
-.btn.p{background:var(--pr)}.btn.o{background:var(--card);color:var(--pr);border:1px solid var(--pr)}
-.nav{position:fixed;bottom:0;left:50%;transform:translateX(-50%);width:100%;max-width:480px;display:flex;background:var(--card);border-top:1px solid var(--bd);padding-bottom:env(safe-area-inset-bottom)}
+.f{display:flex;justify-content:space-between;align-items:center;gap:8px;background:var(--card);border:1px solid var(--bd);border-radius:10px;padding:0 12px;min-height:46px;transition:.2s}
+.f input{width:140px;min-width:0;text-align:right;border:0;background:none;color:var(--tx);font-weight:700;font-size:16px;outline:none}
+.f2{background:var(--card);border:1px solid var(--bd);border-radius:10px;padding:10px 12px}
+.mi{display:flex;gap:8px;margin-top:6px}
+.mi label{flex:1;display:flex;align-items:center;border:1px solid var(--bd);border-radius:8px;padding:0 10px;height:44px;transition:.2s}
+.mi input{flex:1;min-width:0;border:0;background:none;color:var(--tx);font-weight:700;font-size:16px;outline:none;text-align:right}
+.mi em{font-style:normal;color:var(--mu);margin-left:6px;font-size:13px}
+.f:focus-within,.mi label:focus-within,input.in:focus,textarea:focus{border-color:var(--pr);box-shadow:0 0 0 3px rgba(37,99,235,.18)}
+input.in,textarea{width:100%;height:46px;border:1px solid var(--bd);border-radius:10px;padding:0 12px;background:var(--card);color:var(--tx);font-size:15px;outline:none;transition:.2s}
+textarea{height:70px;padding:10px;resize:vertical}
+/* кнопки + анимации */
+.btn,.chip,.nav span,.kc{position:relative;overflow:hidden;-webkit-tap-highlight-color:transparent;user-select:none;transition:transform .12s,filter .15s,background .2s,box-shadow .2s}
+.btn{height:48px;border:0;border-radius:10px;background:var(--ok);color:#fff;font-weight:700;font-size:15px;width:100%;cursor:pointer;box-shadow:0 2px 6px rgba(0,0,0,.15)}
+.btn.p{background:var(--pr)}.btn.dg{background:var(--er)}.btn.o{background:var(--card);color:var(--pr);border:1px solid var(--pr);box-shadow:none}
+.btn:hover{filter:brightness(1.1)}.btn:active,.chip:active,.kc:active{transform:scale(.96)}
+.btn.ld{pointer-events:none;color:transparent!important}
+.btn.ld::after{content:'';position:absolute;left:50%;top:50%;width:20px;height:20px;margin:-10px 0 0 -10px;border:3px solid rgba(255,255,255,.4);border-top-color:#fff;border-radius:50%;animation:sp .7s linear infinite}
+.btn.o.ld::after{border-color:rgba(37,99,235,.3);border-top-color:var(--pr)}
+.rp{position:absolute;border-radius:50%;background:rgba(255,255,255,.5);transform:scale(0);animation:rp .55s ease-out;pointer-events:none}
+.o .rp,.chip .rp,.nav .rp,.kc .rp{background:rgba(37,99,235,.25)}
+@keyframes sp{to{transform:rotate(360deg)}}
+@keyframes rp{to{transform:scale(1);opacity:0}}
+@keyframes up{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
+@keyframes fi{from{opacity:0}to{opacity:1}}
+@keyframes su{from{transform:translateY(40px);opacity:0}to{transform:none;opacity:1}}
+@keyframes pop{0%{transform:scale(0)}60%{transform:scale(1.25)}100%{transform:scale(1)}}
+@keyframes sh{to{background-position:-200% 0}}
+.bd.in>*{animation:up .3s both}
+.bd.in>:nth-child(2){animation-delay:.04s}.bd.in>:nth-child(3){animation-delay:.08s}.bd.in>:nth-child(4){animation-delay:.12s}.bd.in>:nth-child(5){animation-delay:.16s}.bd.in>:nth-child(n+6){animation-delay:.2s}
+.pop{animation:pop .5s}
+.sk{height:64px;border-radius:12px;background:linear-gradient(90deg,var(--bd) 25%,rgba(128,128,128,.18) 50%,var(--bd) 75%);background-size:200% 100%;animation:sh 1.2s infinite}
+.nav{position:fixed;bottom:0;left:50%;transform:translateX(-50%);width:100%;max-width:480px;display:flex;background:var(--card);border-top:1px solid var(--bd);padding-bottom:env(safe-area-inset-bottom);z-index:10}
 .nav span{flex:1;text-align:center;padding:8px 0;font-size:11px;color:var(--mu);cursor:pointer}.nav span.on{color:var(--pr);font-weight:700}
-.chips{display:flex;gap:6px;flex-wrap:wrap}.chip{padding:7px 12px;border:1px solid var(--bd);border-radius:20px;background:var(--card);font-size:13px;cursor:pointer}.chip.on{background:var(--pr);color:#fff;border-color:var(--pr)}
-.g2{display:grid;grid-template-columns:1fr 1fr;gap:8px}.kp{background:var(--card);border:1px solid var(--bd);border-radius:12px;padding:10px}.kp i{font-style:normal;font-size:12px;color:var(--mu)}.kp b{display:block;font-size:22px}.kp.h b{color:var(--ok)}
-table{width:100%;border-collapse:collapse;font-size:13px}th,td{padding:8px 4px;text-align:right;border-bottom:1px solid var(--bd)}th:first-child,td:first-child{text-align:left}tr.cl{cursor:pointer}
-.d{display:inline-block;width:12px;height:12px;border-radius:50%}.green{background:var(--ok)}.yellow{background:var(--wn)}.red{background:var(--er)}
-.bars{display:flex;gap:6px;align-items:flex-end;height:90px}.bars div{flex:1;background:var(--pr);border-radius:4px 4px 0 0;min-height:2px}
-.bl{display:flex;gap:6px}.bl span{flex:1;text-align:center;font-size:11px;color:var(--mu)}
-.err{color:var(--er);font-size:13px;min-height:16px}.ctr{text-align:center}.big{font-size:48px}
-
 .nav em{font-style:normal}
+.chips{display:flex;gap:6px;flex-wrap:wrap}
+.chip{padding:8px 14px;border:1px solid var(--bd);border-radius:20px;background:var(--card);font-size:13px;cursor:pointer;display:inline-block}.chip.on{background:var(--pr);color:#fff;border-color:var(--pr)}
+.g2{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.kp{background:var(--card);border:1px solid var(--bd);border-radius:12px;padding:10px}.kp i{font-style:normal;font-size:12px;color:var(--mu)}.kp b{display:block;font-size:22px}.kp.h b{color:var(--ok)}
+table{width:100%;border-collapse:collapse;font-size:13px}th,td{padding:8px 4px;text-align:right;border-bottom:1px solid var(--bd);white-space:nowrap}th:first-child,td:first-child{text-align:left}
+tr.cl{cursor:pointer;transition:background .15s}tr.cl:active{background:rgba(37,99,235,.12)}
+.d{display:inline-block;width:12px;height:12px;border-radius:50%;flex:none}.green{background:var(--ok)}.yellow{background:var(--wn)}.red{background:var(--er)}.gray{background:#9ca3af}
+.tg{font-size:11px;background:var(--bd);padding:2px 6px;border-radius:6px;color:var(--mu)}
+.bars{display:flex;gap:6px;align-items:flex-end;height:90px}.bars div{flex:1;background:var(--pr);border-radius:4px 4px 0 0;min-height:2px;transition:height .5s}
+.bl{display:flex;gap:6px}.bl span{flex:1;text-align:center;font-size:11px;color:var(--mu)}
+.ir{display:flex;justify-content:space-between;align-items:center;padding:9px 0;border-bottom:1px solid var(--bd);gap:10px}.ir:last-child{border:0}
+.err{color:var(--er);font-size:13px;min-height:16px}.ctr{text-align:center}.big{font-size:48px}
 .bd.lg{margin:auto;max-width:420px;width:100%;padding-bottom:24px}
+.ts{position:fixed;left:50%;bottom:90px;transform:translateX(-50%);background:#111827;color:#fff;padding:12px 18px;border-radius:12px;z-index:99;animation:up .25s;max-width:90%;box-shadow:0 6px 20px rgba(0,0,0,.3)}.ts.er{background:var(--er)}.ts.ok{background:var(--ok)}
+.ov{position:fixed;inset:0;background:rgba(0,0,0,.55);display:flex;align-items:flex-end;justify-content:center;z-index:50;animation:fi .2s}
+.md{background:var(--card);width:100%;max-width:480px;border-radius:18px 18px 0 0;padding:18px;display:flex;flex-direction:column;gap:10px;animation:su .28s ease;max-height:92vh;overflow:auto}
 @media(min-width:600px) and (max-width:899px){#app{max-width:640px}.nav{max-width:640px}}
 @media(min-width:900px){
  body{font-size:16px}
- #app{max-width:none;padding-left:230px}
- #app.nl{padding-left:0}
+ #app{max-width:none;padding-left:230px}#app.nl{padding-left:0}
  .top{padding:20px 32px;font-size:18px}
  .bd{width:100%;max-width:960px;margin:0 auto;padding:24px 32px;gap:14px}
  .nav{left:0;top:0;bottom:0;transform:none;width:230px;max-width:none;flex-direction:column;border-top:0;border-right:1px solid var(--bd);padding:20px 12px;gap:4px}
  .nav::before{content:'📊 Отчёты отдела';font-weight:700;font-size:17px;padding:6px 14px 20px}
  .nav span{flex:none;text-align:left;padding:12px 14px;font-size:15px;border-radius:10px}
- .nav span:hover{background:rgba(37,99,235,.08)}
- .nav span.on{background:rgba(37,99,235,.14)}
+ .nav span:hover{background:rgba(37,99,235,.08)}.nav span.on{background:rgba(37,99,235,.14)}
  .nav br{display:none}.nav em{font-size:20px;margin-right:12px;vertical-align:middle}
  .kg{grid-template-columns:repeat(3,1fr);gap:12px}.kp b{font-size:26px}
  table{font-size:15px}th,td{padding:12px 8px}tr.cl:hover{background:rgba(37,99,235,.07)}
  .bars{height:180px}.bl span{font-size:13px}
- .btn{max-width:320px}.chip:hover{border-color:var(--pr)}
- .f{min-height:50px}
+ .btn{max-width:320px}.bd.lg .btn,.md .btn{max-width:none}
+ .chip:hover{border-color:var(--pr)}.kc:hover{border-color:var(--pr)}
+ .ov{align-items:center}.md{border-radius:18px;max-width:440px}.ts{bottom:30px}
 }
 </style></head><body><div id="app"></div>
 <script>
 // ====== 1) ВСТАВЬТЕ СЮДА URL ВАШЕГО Apps Script (Web app) ======
 const API = 'https://script.google.com/macros/s/AKfycbwsVBWvOh9es56U8l6LgRBAbSQupX3vDLsEA_8ySVyebt3PcxfDMqsJrmHIOge-r5IL/exec';
 
-const $ = s => document.querySelector(s), app = $('#app');
-const S = { token: localStorage.token || '', user: null, st: {}, today: '', tab: '', range: '7', from: '', to: '' };
+const $ = (s, r = document) => r.querySelector(s), $$ = s => document.querySelectorAll(s), app = $('#app');
+const pad = n => String(n).padStart(2, '0');
+const iso = d => d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate());
+const S = { token: localStorage.token || '', user: null, st: {}, today: iso(new Date()), tab: '', range: '7', from: '', to: '', nav: 0, edit: false, rep: null, draft: null, dd: null, cid: '' };
 const fmt = n => Number(n || 0).toLocaleString('ru');
 const dm = d => d.slice(8, 10) + '.' + d.slice(5, 7);
-const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
-const iso = d => new Date(d - d.getTimezoneOffset() * 6e4).toISOString().slice(0, 10);
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const HASHRE = /^[0-9a-f]{64}$/;
+const sk = n => Array(n).fill('<div class="sk"></div>').join('');
 
-async function api(a, o = {}) {
+// ====== СЕТЬ + КЭШ (быстро: показываем сохранённое сразу, обновляем в фоне) ======
+const inflight = {};
+function api(a, o = {}) {
   const d = encodeURIComponent(JSON.stringify({ a, token: S.token, ...o }));
-  const r = await (await fetch(API + '?d=' + d)).json();
-  if (r.error) { if (/Сессия/.test(r.error)) logout(); throw new Error(r.error); }
-  return r;
+  if (inflight[d]) return inflight[d];
+  return inflight[d] = fetch(API + '?d=' + d).then(r => r.json(), () => { throw new Error('Нет связи с сервером'); })
+    .then(r => { if (r.error) { if (/Сессия/.test(r.error)) logout(); throw new Error(r.error); } return r; })
+    .finally(() => delete inflight[d]);
 }
-function logout() { localStorage.removeItem('token'); S.token = ''; S.user = null; login(); }
-function shell(title, sub, body, tabs) {
-  app.className = tabs ? '' : 'nl';
-  app.innerHTML = `<div class="top"><b>${title}</b><small>${sub || ''}</small></div><div class="bd">${body}</div>` +
-    (tabs ? `<div class="nav">${tabs.map(t => `<span class="${S.tab === t[0] ? 'on' : ''}" onclick="go('${t[0]}')"><em>${t[1]}</em><br>${t[2]}</span>`).join('')}</div>` : '');
+const ck = k => 'c:' + (S.user ? S.user.id : '') + ':' + k;
+const cget = k => { try { return JSON.parse(localStorage.getItem(ck(k))); } catch (e) { return null; } };
+const cset = (k, d) => { try { localStorage.setItem(ck(k), JSON.stringify(d)); } catch (e) {} };
+const cclear = () => Object.keys(localStorage).filter(k => k.startsWith('c:')).forEach(k => localStorage.removeItem(k));
+const typing = () => { const a = document.activeElement; return a && /INPUT|TEXTAREA/.test(a.tagName) && $('.bd') && $('.bd').contains(a); };
+
+async function swr(key, a, o, render, skel) {
+  const my = S.nav, hit = cget(key);
+  if (hit) render(hit, true); else if (skel) skel();
+  try {
+    const d = await api(a, o);
+    cset(key, d);
+    if (my !== S.nav) return;
+    if (!hit || JSON.stringify(hit) !== JSON.stringify(d)) { if (hit && typing()) return; render(d, !!hit); }
+  } catch (e) { if (my === S.nav && !hit) fail(e.message, () => swr(key, a, o, render, skel)); }
 }
+function fail(msg, retry) {
+  $('.bd').innerHTML = `<div class="c ctr">⚠️ ${esc(msg)}<br><br><button class="btn p" id="rt">Повторить</button></div>`;
+  $('#rt').onclick = retry;
+}
+async function run(btn, fn) { // кнопка крутится, пока идёт запрос
+  if (btn.classList.contains('ld')) return;
+  btn.classList.add('ld');
+  try { await fn(); } finally { btn.classList.remove('ld'); }
+}
+function toast(m, c = '') {
+  const e = document.createElement('div'); e.className = 'ts ' + c; e.textContent = m; document.body.appendChild(e);
+  setTimeout(() => { e.style.transition = 'opacity .3s'; e.style.opacity = 0; }, 2200); setTimeout(() => e.remove(), 2600);
+}
+function modal(html) {
+  closeModal();
+  const o = document.createElement('div'); o.className = 'ov'; o.innerHTML = '<div class="md">' + html + '</div>';
+  o.onclick = e => { if (e.target === o) closeModal(); };
+  document.body.appendChild(o);
+}
+const closeModal = () => $$('.ov').forEach(x => x.remove());
+document.addEventListener('pointerdown', e => { // эффект волны при нажатии
+  const t = e.target.closest('.btn,.chip,.nav span,.kc'); if (!t) return;
+  const r = t.getBoundingClientRect(), s = Math.max(r.width, r.height) * 2, x = document.createElement('span');
+  x.className = 'rp'; x.style.cssText = `width:${s}px;height:${s}px;left:${e.clientX - r.left - s / 2}px;top:${e.clientY - r.top - s / 2}px`;
+  t.appendChild(x); setTimeout(() => x.remove(), 600);
+});
+
+function logout() {
+  ['token', 'user', 'st'].forEach(k => localStorage.removeItem(k)); cclear();
+  S.token = ''; S.user = null; closeModal(); login();
+}
+
+// ====== ОБОЛОЧКА ======
 const MT = [['report', '📊', 'Отчёт'], ['history', '📈', 'История'], ['profile', '👤', 'Профиль']];
 const RT = [['dash', '📊', 'Дашборд'], ['team', '👥', 'Команда'], ['period', '📅', 'Период'], ['settings', '⚙️', 'Настройки']];
-function go(t) { S.tab = t; ({ report, history: hist, profile, dash, team, period, settings })[t](); }
+function shell(title, sub, body, tabs, silent, back) {
+  const key = tabs ? tabs.map(t => t[0]).join() : '', topH = (back ? '<span class="bk" id="bk">‹</span>' : '') + `<div><b>${title}</b><small>${sub || ''}</small></div>`;
+  if (tabs && app.dataset.nav === key) {
+    $('.top').innerHTML = topH; const b = $('.bd'); b.innerHTML = body; b.className = 'bd' + (silent ? '' : ' in');
+    $$('.nav span').forEach(x => x.classList.toggle('on', x.dataset.t === S.tab));
+  } else {
+    app.dataset.nav = key; app.className = tabs ? '' : 'nl';
+    app.innerHTML = `<div class="top">${topH}</div><div class="bd${silent ? '' : ' in'}">${body}</div>` +
+      (tabs ? `<div class="nav">${tabs.map(t => `<span data-t="${t[0]}" class="${S.tab === t[0] ? 'on' : ''}" onclick="go('${t[0]}')"><em>${t[1]}</em><br>${t[2]}</span>`).join('')}</div>` : '');
+  }
+  if (back) $('#bk').onclick = back;
+  if (!silent) window.scrollTo(0, 0);
+}
+const VIEWS = {};
+function go(t) { S.nav++; S.tab = t; S.edit = false; VIEWS[t](); }
+function pick(r, fn) { S.range = r; S.nav++; VIEWS[fn](); }
 function range() {
   const t = new Date(), y = new Date(t - 864e5);
   if (S.range === 'today') return [iso(t), iso(t)];
@@ -84,124 +185,195 @@ function range() {
   if (S.range === 'month') return [iso(t).slice(0, 8) + '01', iso(t)];
   return [S.from || iso(t), S.to || iso(t)];
 }
-function chips(fn, list) {
-  return `<div class="chips">${list.map(x => `<span class="chip ${S.range === x[0] ? 'on' : ''}" onclick="S.range='${x[0]}';${fn}()">${x[1]}</span>`).join('')}</div>`;
-}
+const chips = (fn, list) => `<div class="chips">${list.map(x => `<span class="chip ${S.range === x[0] ? 'on' : ''}" onclick="pick('${x[0]}','${fn}')">${x[1]}</span>`).join('')}</div>`;
+const DCH = [['today', 'Сегодня'], ['yest', 'Вчера'], ['7', '7 дней'], ['month', 'Месяц']];
 
 // ====== ВХОД ======
 function login(err = '') {
-  app.className = 'nl';
-  app.innerHTML = `<div class="bd lg" style="justify-content:center"><div class="ctr big">📊</div>
+  app.dataset.nav = ''; app.className = 'nl';
+  app.innerHTML = `<div class="bd lg in" style="justify-content:center"><div class="ctr big">📊</div>
   <div class="ctr"><b style="font-size:20px">Отчёты отдела</b><div class="mu">Войдите, чтобы продолжить</div></div>
   <div class="lb">Телефон</div><input class="in" id="ph" inputmode="tel" placeholder="9XXXXXXXX">
   <div class="lb">Пароль</div><input class="in" id="pw" type="password" placeholder="••••••••">
   <div class="err" id="er">${err}</div><button class="btn p" id="bt">Войти</button></div>`;
-  $('#bt').onclick = async () => {
-    $('#bt').disabled = true; $('#er').textContent = '';
+  $('#bt').onclick = () => run($('#bt'), async () => {
+    $('#er').textContent = '';
     try {
-      const r = await api('login', { phone: $('#ph').value, password: $('#pw').value });
-      S.token = r.token; localStorage.token = r.token; start(r);
-    } catch (e) { $('#er').textContent = e.message; $('#bt').disabled = false; }
-  };
+      const [f, t] = range(), r = await api('login', { phone: $('#ph').value, password: $('#pw').value, from: f, to: t });
+      S.token = r.token; S.user = r.user; S.st = r.settings;
+      localStorage.token = r.token; localStorage.user = JSON.stringify(r.user); localStorage.st = JSON.stringify(r.settings);
+      cset(r.user.role === 'rop' ? `dash:${f}:${t}` : 'my', r.init);
+      start();
+    } catch (e) { $('#er').textContent = e.message; }
+  });
+  ['ph', 'pw'].forEach(i => $('#' + i).onkeydown = e => { if (e.key === 'Enter') $('#bt').click(); });
 }
-function start(r) {
-  S.user = r.user; S.st = r.settings; S.today = r.today;
+function start() {
   go(S.user.role === 'rop' ? 'dash' : 'report');
+  setTimeout(() => { // подгружаем остальные вкладки заранее
+    const bg = (k, a, o) => api(a, o).then(d => cset(k, d)).catch(() => {});
+    if (!S.user) return;
+    if (S.user.role === 'rop') { bg('team', 'team'); bg('settings', 'getSettings'); }
+    else { const [f, t] = range(); bg(`hist:${f}:${t}`, 'history', { from: f, to: t }); }
+  }, 1200);
 }
 
 // ====== МЕНЕДЖЕР ======
-const FIELDS = [['calls', '📞 Звонки'], ['broadcasts', '📢 Рассылки'], ['chats', '💬 Переписки'], ['sales', '💰 Продажи'],
-  ['sales_amount', '💵 Сумма продаж'], ['awaiting_payment', '⏳ Ожидают оплаты'], ['hot_leads', '🔥 Горячие клиенты']];
-async function report(edit) {
-  const { report: r } = await api('myReport'), t = S.today;
-  const h = new Date().getHours(), hi = h < 12 ? '☀️ Доброе утро' : h < 18 ? '🌤 Добрый день' : '🌙 Добрый вечер';
-  if (r && !edit) {
-    return shell('Отчёт', dm(t) + '.' + t.slice(0, 4), `<div class="ctr big" style="margin-top:20px">✅</div>
+const FIELDS = ['calls', 'broadcasts', 'sales', 'sales_amount', 'sales_usd', 'awaiting_payment'];
+const num = (id, l, v) => `<label class="f"><span>${l}</span><input id="${id}" type="number" min="0" step="any" inputmode="decimal" placeholder="0" value="${esc(v)}"></label>`;
+VIEWS.report = () => swr('my', 'myReport', {}, (d, s) => reportView(d.report, s), () => shell('Отчёт', dm(S.today), sk(4), MT));
+function reportView(r, silent) {
+  S.rep = r; const t = S.today, h = new Date().getHours();
+  if (r && !S.edit) {
+    shell('Отчёт', dm(t) + '.' + t.slice(0, 4), `<div class="ctr big pop" style="margin-top:16px">✅</div>
     <div class="ctr"><b>Отчёт за ${dm(t)} отправлен</b><div class="mu">Время отправки: ${r.submitted_at.slice(11)}</div></div>
-    <div class="c mu">Звонки ${r.calls} · Рассылки ${r.broadcasts} · Переписки ${r.chats}<br>Продажи ${r.sales} · ${fmt(r.sales_amount)} сомони</div>
-    <button class="btn o" onclick="report(true)">✏️ Исправить</button>
-    <div class="mu ctr">Удалять отчёт нельзя. Правки сохраняются:<br>отправлен ${r.submitted_at.slice(11)} · изменён ${r.updated_at.slice(11)}</div>`, MT);
+    <div class="c mu">📞 Звонки ${r.calls} · 📢 Рассылки/Переписки ${r.broadcasts}<br>💰 Продажи ${r.sales} · ${fmt(r.sales_amount)} сомони · $${fmt(r.sales_usd)}<br>⏳ Ожидают оплаты ${r.awaiting_payment}</div>
+    <button class="btn o" id="ed">✏️ Исправить</button>
+    <div class="mu ctr">Удалять отчёт нельзя. Правки сохраняются:<br>отправлен ${r.submitted_at.slice(11)} · изменён ${r.updated_at.slice(11)}</div>`, MT, silent);
+    $('#ed').onclick = () => { S.edit = true; reportView(r); };
+    return;
   }
-  const v = r || {};
-  shell(`${hi}, ${esc(S.user.name)}!`, `Сегодня ${dm(t)}.${t.slice(0, 4)} · сдать до ${S.st.deadline}`,
-    `<div class="lb">Активность</div>` + FIELDS.slice(0, 3).map(inp).join('') + `<div class="lb">Результат</div>` + FIELDS.slice(3).map(inp).join('') +
-    `<textarea id="comment" placeholder="📝 Комментарий…">${esc(v.comment)}</textarea><div class="err" id="er"></div>
-    <button class="btn" id="bt">🟢 ${r ? 'СОХРАНИТЬ ИЗМЕНЕНИЯ' : 'ОТПРАВИТЬ ОТЧЁТ'}</button>`, MT);
-  function inp(f) { return `<label class="f"><span>${f[1]}</span><input id="${f[0]}" type="number" min="0" inputmode="numeric" placeholder="0" value="${v[f[0]] ?? ''}"></label>`; }
-  $('#bt').onclick = async () => {
-    const o = { comment: $('#comment').value }; FIELDS.forEach(f => o[f[0]] = $('#' + f[0]).value || 0);
-    $('#bt').disabled = true;
-    try { await api('saveReport', { r: o }); report(); } catch (e) { $('#er').textContent = e.message; $('#bt').disabled = false; }
+  const v = S.draft || r || {}; S.draft = null;
+  shell(`${h < 12 ? '☀️ Доброе утро' : h < 18 ? '🌤 Добрый день' : '🌙 Добрый вечер'}, ${esc(S.user.name)}!`, `Сегодня ${dm(t)}.${t.slice(0, 4)} · сдать до ${esc(S.st.deadline)}`,
+    `<div class="lb">Активность</div>${num('calls', '📞 Звонки', v.calls)}${num('broadcasts', '📢 Рассылки/Переписки', v.broadcasts)}
+    <div class="lb">Результат</div>${num('sales', '💰 Продажи', v.sales)}
+    <div class="f2"><span>💵 Сумма продаж</span><div class="mi"><label><input id="sales_amount" type="number" min="0" step="any" inputmode="decimal" placeholder="0" value="${esc(v.sales_amount)}"><em>сомони</em></label><label><input id="sales_usd" type="number" min="0" step="any" inputmode="decimal" placeholder="0" value="${esc(v.sales_usd)}"><em>$</em></label></div></div>
+    ${num('awaiting_payment', '⏳ Ожидают оплаты', v.awaiting_payment)}
+    <textarea id="comment" placeholder="📝 Комментарий…">${esc(v.comment)}</textarea><div class="err" id="er"></div>
+    <button class="btn" id="bt">🟢 ${r ? 'СОХРАНИТЬ ИЗМЕНЕНИЯ' : 'ОТПРАВИТЬ ОТЧЁТ'}</button>`, MT, silent);
+  $('#bt').onclick = () => {
+    const o = { comment: $('#comment').value }; FIELDS.forEach(k => o[k] = $('#' + k).value || 0);
+    const hm = pad(new Date().getHours()) + ':' + pad(new Date().getMinutes()), prev = r;
+    const opt = { ...(prev || {}), ...o, submitted_at: prev ? prev.submitted_at : t + ' ' + hm, updated_at: t + ' ' + hm };
+    S.edit = false; cset('my', { report: opt }); reportView(opt); toast('Отчёт сохранён ✅', 'ok'); // сразу показываем результат
+    api('saveReport', { r: o }).then(x => cset('my', x)).catch(e => { // если сервер отказал — возвращаем форму
+      toast(e.message, 'er'); cset('my', { report: prev }); S.draft = o; S.edit = true; reportView(prev); });
   };
 }
-async function hist() {
-  const [f, t] = range(), r = await api('history', { from: f, to: t });
-  const pl = n => n + (n % 10 == 1 && n != 11 ? ' продажа' : [2, 3, 4].includes(n % 10) && ![12, 13, 14].includes(n) ? ' продажи' : ' продаж');
-  shell('📈 История', 'Мои отчёты', chips('hist', [['today', 'Сегодня'], ['7', 'Неделя'], ['month', 'Месяц']]) +
-    (r.list.map(x => `<div class="c"><b>${dm(x.report_date)}</b> — ${pl(+x.sales)} — ${fmt(x.sales_amount)} сомони<div class="mu">📞 ${x.calls} · 📢 ${x.broadcasts} · 💬 ${x.chats}</div></div>`).join('') || '<div class="mu ctr">Нет отчётов</div>'), MT);
-}
-function profile() {
-  shell('👤 Профиль', S.st.company, `<div class="c"><b>${esc(S.user.name)}</b><div class="mu">+992 ${esc(S.user.phone)} · менеджер</div></div><button class="btn o" onclick="logout()">Выйти</button>`, MT);
-}
+VIEWS.history = () => {
+  const [f, t] = range(), top = x => chips('history', [['today', 'Сегодня'], ['7', 'Неделя'], ['month', 'Месяц']]) + x;
+  swr(`hist:${f}:${t}`, 'history', { from: f, to: t }, (d, s) => shell('📈 История', 'Мои отчёты', top(
+    d.list.map(x => `<div class="c"><b>${dm(x.report_date)}</b> — 💰 ${x.sales} · ${fmt(x.sales_amount)} сомони · $${fmt(x.sales_usd)}<div class="mu">📞 ${x.calls} · 📢 ${x.broadcasts} · ⏳ ${x.awaiting_payment}</div></div>`).join('') || '<div class="mu ctr">Нет отчётов</div>'), MT, s),
+    () => shell('📈 История', 'Мои отчёты', top(sk(3)), MT));
+};
+VIEWS.profile = () => {
+  shell('👤 Профиль', esc(S.st.company), `<div class="c"><b>${esc(S.user.name)}</b><div class="mu">📱 ${esc(S.user.phone)} · менеджер</div></div><button class="btn o" id="lo">Выйти</button>`, MT);
+  $('#lo').onclick = logout;
+};
 
 // ====== РОП ======
 const kp = (l, v, h) => `<div class="kp ${h ? 'h' : ''}"><i>${l}</i><b>${v}</b></div>`;
-function kpis(t) {
-  return `<div class="g2 kg">${kp('📞 Звонки', fmt(t.calls))}${kp('📢 Рассылки', fmt(t.broadcasts))}${kp('💬 Переписки', fmt(t.chats))}${kp('💰 Продажи', fmt(t.sales), 1)}${kp('💵 Выручка', fmt(t.sales_amount), 1)}${kp('⏳ Ожидают · 🔥 Горячие', t.awaiting_payment + ' · ' + t.hot_leads)}</div>`;
-}
-async function dash() {
-  const [f, t] = range(), r = await api('dashboard', { from: f, to: t });
-  shell('📊 Дашборд', (f === t ? dm(f) : dm(f) + ' → ' + dm(t)) + ' · Весь отдел',
-    chips('dash', [['today', 'Сегодня'], ['yest', 'Вчера'], ['7', '7 дней'], ['month', 'Месяц']]) + kpis(r.totals) +
-    `<div class="lb">Менеджеры</div><div class="c"><table><tr><th>Имя</th><th>Зв</th><th>Рас</th><th>Пер</th><th>Пр</th><th>Сумма</th><th></th></tr>` +
-    r.managers.map(m => `<tr class="cl" onclick="card('${m.id}')"><td>${esc(m.name)}</td>${m.reported ? [m.calls, m.broadcasts, m.chats, m.sales, fmt(m.sales_amount)].map(x => `<td>${x}</td>`).join('') : '<td>—</td>'.repeat(5)}<td><span class="d ${m.status}"></span></td></tr>`).join('') +
-    `</table></div><div class="mu">🟢 норма · 🟡 частично · 🔴 не сдал</div>` +
-    (r.missingToday.length ? `<div class="c"><div class="lb">🔴 Не сдали отчёт сегодня</div>${r.missingToday.map(esc).join(' · ')}</div>` : ''), RT);
-}
-async function team() {
-  const [f, t] = range(), r = await api('dashboard', { from: f, to: t });
-  shell('👥 Команда', 'Нажмите на менеджера', r.managers.map(m => `<div class="c" onclick="card('${m.id}')" style="cursor:pointer"><span class="d ${m.status}"></span> <b>${esc(m.name)}</b><div class="mu">💰 ${m.sales} · 💵 ${fmt(m.sales_amount)}</div></div>`).join(''), RT);
-}
-async function card(id) {
-  const [f, t] = range(), r = await api('manager', { id, from: f, to: t }), mx = Math.max(1, ...r.days.map(d => d.sales));
-  const wd = ['Вс', 'Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб'];
-  shell('← 👤 ' + esc(r.user.name), f === t ? dm(f) : dm(f) + ' → ' + dm(t), kpis(r.totals) +
-    `<div class="c"><div class="lb">Продажи — последние 7 дней</div><div class="bars">${r.days.map(d => `<div style="height:${d.sales / mx * 100}%"></div>`).join('')}</div>
-    <div class="bl">${r.days.map(d => `<span>${wd[new Date(d.date).getDay()]}<br>${d.sales}</span>`).join('')}</div></div>` +
-    (r.list[0] && r.list[0].comment ? `<div class="c"><div class="lb">Комментарий</div>${esc(r.list[0].comment)}</div>` : ''), RT);
-  document.querySelector('.top').onclick = () => go(S.tab);
-}
-async function period() {
-  const [f, t] = range(), r = await api('dashboard', { from: f, to: t });
-  shell('📅 Период', dm(f) + ' → ' + dm(t), chips('period', [['today', 'Сегодня'], ['yest', 'Вчера'], ['7', '7 дней'], ['month', 'Этот месяц'], ['custom', 'Произвольный']]) +
-    `<div class="g2"><input class="in" type="date" id="df" value="${f}"><input class="in" type="date" id="dt" value="${t}"></div>
-    <button class="btn o" onclick="S.range='custom';S.from=$('#df').value;S.to=$('#dt').value;period()">Применить</button>
-    <div class="c"><div class="lb">Итого за ${r.totals.days} дн.</div>${[['📞 Звонки', 'calls'], ['📢 Рассылки', 'broadcasts'], ['💬 Переписки', 'chats'], ['💰 Продажи', 'sales'], ['💵 Выручка', 'sales_amount']].map(x => `<div class="f" style="border:0"><span>${x[0]}</span><b>${fmt(r.totals[x[1]])}</b></div>`).join('')}</div>
-    <button class="btn p" id="ex">⬇️ Выгрузить (Excel/CSV)</button>`, RT);
-  $('#ex').onclick = () => {
-    const h = 'Менеджер;Звонки;Рассылки;Переписки;Продажи;Сумма;Ожидают оплаты;Горячие\n';
-    const csv = '\ufeff' + h + r.managers.map(m => [m.name, m.calls, m.broadcasts, m.chats, m.sales, m.sales_amount, m.awaiting_payment, m.hot_leads].join(';')).join('\n');
-    const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([csv], { type: 'text/csv' })); a.download = `otchet_${f}_${t}.csv`; a.click();
-  };
-}
-async function settings() {
-  const { settings: s } = await api('getSettings');
-  const row = (k, l) => `<label class="f"><span>${l}</span><input id="s_${k}" value="${esc(s[k])}"></label>`;
-  shell('⚙️ Настройки', 'Только для РОПа', `<div class="lb">Нормативы в день</div>${row('norm_calls', 'Норма звонков')}${row('norm_broadcasts', 'Норма рассылок')}${row('norm_chats', 'Норма переписок')}
-    <div class="lb">Отчёты</div>${row('deadline', 'Время сдачи')}${row('company', 'Компания')}
-    <button class="btn p" id="sv">Сохранить</button>
-    <div class="lb">Новый менеджер</div><input class="in" id="n_name" placeholder="Имя"><input class="in" id="n_ph" placeholder="Телефон"><input class="in" id="n_pw" placeholder="Пароль (от 6 символов)">
-    <div class="err" id="er"></div><button class="btn o" id="au">Добавить менеджера</button><button class="btn o" onclick="logout()">Выйти</button>`, RT);
-  $('#sv').onclick = async () => {
-    const o = {}; ['norm_calls', 'norm_broadcasts', 'norm_chats', 'deadline', 'company'].forEach(k => o[k] = $('#s_' + k).value);
-    const r = await api('saveSettings', { s: o }); S.st = r.settings; $('#er').textContent = '✅ Сохранено';
-  };
-  $('#au').onclick = async () => {
-    try { await api('addUser', { name: $('#n_name').value, phone: $('#n_ph').value, password: $('#n_pw').value }); $('#er').textContent = '✅ Менеджер добавлен'; }
-    catch (e) { $('#er').textContent = e.message; }
-  };
+const kpis = t => `<div class="g2 kg">${kp('📞 Звонки', fmt(t.calls))}${kp('📢 Рассылки/Переписки', fmt(t.broadcasts))}${kp('💰 Продажи', fmt(t.sales), 1)}${kp('💵 Сомони', fmt(t.sales_amount), 1)}${kp('💲 Доллары', '$' + fmt(t.sales_usd), 1)}${kp('⏳ Ожидают оплаты', fmt(t.awaiting_payment))}</div>`;
+const rng = (f, t) => f === t ? dm(f) : dm(f) + ' → ' + dm(t);
+
+VIEWS.dash = () => {
+  const [f, t] = range();
+  swr(`dash:${f}:${t}`, 'dashboard', { from: f, to: t }, (d, s) => {
+    S.dd = d;
+    shell('📊 Дашборд', rng(f, t) + ' · Весь отдел', chips('dash', DCH) + kpis(d.totals) +
+      `<div class="lb">Менеджеры</div><div class="c" style="overflow-x:auto"><table><tr><th>Имя</th><th>Зв</th><th>Р/П</th><th>Пр</th><th>смн</th><th>$</th><th></th></tr>` +
+      d.managers.map(m => `<tr class="cl" onclick="card('${m.id}')"><td>${esc(m.name)}</td>${m.reported ? [m.calls, m.broadcasts, m.sales, fmt(m.sales_amount), fmt(m.sales_usd)].map(x => `<td>${x}</td>`).join('') : '<td>—</td>'.repeat(5)}<td><span class="d ${m.status}"></span></td></tr>`).join('') +
+      `</table></div><div class="mu">🟢 норма · 🟡 частично · 🔴 не сдал</div>` +
+      (d.missingToday.length ? `<div class="c"><div class="lb">🔴 Не сдали отчёт сегодня</div>${d.missingToday.map(esc).join(' · ')}</div>` : ''), RT, s);
+  }, () => shell('📊 Дашборд', rng(f, t), chips('dash', DCH) + sk(4), RT));
+};
+
+VIEWS.team = () => swr('team', 'team', {}, (d, s) => {
+  shell('👥 Команда', d.managers.length + ' менеджеров', `<button class="btn p" id="add">➕ Добавить менеджера</button>` +
+    (d.managers.map(m => `<div class="c kc" data-id="${m.id}" style="cursor:pointer;display:flex;gap:12px;align-items:center"><span class="d ${!+m.active ? 'gray' : m.reportedToday ? 'green' : 'red'}"></span><div style="flex:1"><b>${esc(m.name)}</b> ${!+m.active ? '<span class="tg">отключён</span>' : ''}<div class="mu">📱 ${esc(m.phone)}</div></div><span class="mu">${m.reportedToday ? '✓ сдал' : '—'}</span></div>`).join('') || '<div class="mu ctr">Менеджеров пока нет</div>'), RT, s);
+  $('#add').onclick = () => userForm();
+  $$('.kc').forEach(el => el.onclick = () => card(el.dataset.id));
+}, () => shell('👥 Команда', '', sk(4), RT));
+
+function card(id) {
+  S.nav++; S.cid = id; VIEWS.card = () => card(S.cid);
+  const [f, t] = range(), back = () => go(S.tab);
+  swr(`m:${id}:${f}:${t}`, 'manager', { id, from: f, to: t }, (d, s) => {
+    const u = d.user, mx = Math.max(1, ...d.days.map(x => x.sales)), wd = ['Вс', 'Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб'], legacy = HASHRE.test(u.password);
+    shell('👤 ' + esc(u.name), rng(f, t), `<div class="c">
+      <div class="ir"><span>📱 Телефон (логин)</span><b>${esc(u.phone)}</b></div>
+      <div class="ir"><span>🔑 Пароль</span><span>${legacy ? '<span class="mu">старый, скрыт — задайте новый</span>' : `<b id="pv">••••••</b> <span class="chip" id="eye">👁</span> <span class="chip" id="cp">📋</span>`}</span></div>
+      <div class="ir"><span>Статус</span><b>${+u.active ? '🟢 Активен' : '⚪ Отключён'}</b></div>
+      <div class="ir"><span>Добавлен</span><b>${esc(u.created_at)}</b></div></div>` +
+      chips('card', DCH) + kpis(d.totals) +
+      `<div class="c"><div class="lb">Продажи — последние 7 дней</div><div class="bars">${d.days.map(x => `<div style="height:${x.sales / mx * 100}%"></div>`).join('')}</div>
+      <div class="bl">${d.days.map(x => `<span>${wd[new Date(x.date + 'T00:00').getDay()]}<br>${x.sales}</span>`).join('')}</div></div>` +
+      (d.list[0] && d.list[0].comment ? `<div class="c"><div class="lb">Последний комментарий</div>${esc(d.list[0].comment)}</div>` : '') +
+      `<button class="btn p" id="eu">✏️ Изменить</button><button class="btn dg" id="du">🗑 Удалить менеджера</button>`, RT, s, back);
+    $('#eu').onclick = () => userForm(u); $('#du').onclick = () => delForm(u);
+    if (!legacy) {
+      let shown = false;
+      $('#eye').onclick = () => { shown = !shown; $('#pv').textContent = shown ? u.password : '••••••'; };
+      $('#cp').onclick = () => { (navigator.clipboard ? navigator.clipboard.writeText(u.password) : Promise.reject()).then(() => toast('Пароль скопирован', 'ok'), () => toast(u.password)); };
+    }
+  }, () => shell('👤 Менеджер', rng(f, t), sk(4), RT, false, back));
 }
 
+function userForm(u) {
+  const e = !!u, legacy = e && HASHRE.test(u.password);
+  modal(`<b style="font-size:18px">${e ? '✏️ Изменить менеджера' : '➕ Новый менеджер'}</b>
+    <div class="lb">Имя</div><input class="in" id="u_n" value="${esc(e && u.name)}">
+    <div class="lb">Телефон (логин)</div><input class="in" id="u_p" inputmode="tel" value="${esc(e && u.phone)}">
+    <div class="lb">Пароль</div><div style="display:flex;gap:8px"><input class="in" id="u_w" value="${legacy ? '' : esc(e && u.password)}" placeholder="${legacy ? 'новый пароль' : 'от 6 символов'}"><button class="btn o" id="u_g" style="width:56px">🎲</button></div>
+    <label class="f"><span>Активен (может входить)</span><input type="checkbox" id="u_a" style="width:22px;height:22px" ${!e || +u.active ? 'checked' : ''}></label>
+    <div class="err" id="u_e"></div><button class="btn p" id="u_s">Сохранить</button><button class="btn o" id="u_c">Отмена</button>`);
+  $('#u_g').onclick = () => { $('#u_w').value = Math.random().toString(36).slice(2, 10); };
+  $('#u_c').onclick = closeModal;
+  $('#u_s').onclick = () => run($('#u_s'), async () => {
+    const o = { name: $('#u_n').value, phone: $('#u_p').value, password: $('#u_w').value, active: $('#u_a').checked ? '1' : '0' };
+    try {
+      if (e) await api('updateUser', { id: u.id, ...o }); else await api('addUser', o);
+      cclear(); closeModal(); toast('Сохранено ✅', 'ok'); e ? card(u.id) : go('team');
+    } catch (x) { $('#u_e').textContent = x.message; }
+  });
+}
+function delForm(u) {
+  modal(`<b style="font-size:18px">🗑 Удалить менеджера?</b><div class="mu">${esc(u.name)} и ВСЕ его отчёты будут удалены навсегда. Если нужно только закрыть вход — нажмите «Изменить» и отключите менеджера.</div>
+    <div class="err" id="d_e"></div><button class="btn dg" id="d_y">Да, удалить</button><button class="btn o" id="d_n">Отмена</button>`);
+  $('#d_n').onclick = closeModal;
+  $('#d_y').onclick = () => run($('#d_y'), async () => {
+    try { await api('deleteUser', { id: u.id }); cclear(); closeModal(); toast('Менеджер удалён', 'ok'); go('team'); }
+    catch (x) { $('#d_e').textContent = x.message; }
+  });
+}
+
+VIEWS.period = () => {
+  const [f, t] = range();
+  swr(`dash:${f}:${t}`, 'dashboard', { from: f, to: t }, (d, s) => {
+    S.dd = d; const T = d.totals;
+    shell('📅 Период', rng(f, t), chips('period', [['today', 'Сегодня'], ['yest', 'Вчера'], ['7', '7 дней'], ['month', 'Этот месяц']]) +
+      `<div class="g2"><input class="in" type="date" id="df" value="${f}"><input class="in" type="date" id="dt" value="${t}"></div><button class="btn o" id="ap">Применить даты</button>
+      <div class="c"><div class="lb">Итого за ${T.days} дн.</div>${[['📞 Звонки', T.calls], ['📢 Рассылки/Переписки', T.broadcasts], ['💰 Продажи', T.sales], ['💵 Сомони', fmt(T.sales_amount)], ['💲 Доллары', '$' + fmt(T.sales_usd)], ['⏳ Ожидают оплаты', T.awaiting_payment]].map(x => `<div class="ir"><span>${x[0]}</span><b>${typeof x[1] === 'number' ? fmt(x[1]) : x[1]}</b></div>`).join('')}</div>
+      <button class="btn p" id="ex">⬇️ Выгрузить (CSV для Excel)</button>`, RT, s);
+    $('#ap').onclick = () => { S.range = 'custom'; S.from = $('#df').value; S.to = $('#dt').value; S.nav++; VIEWS.period(); };
+    $('#ex').onclick = () => {
+      const csv = '\ufeffМенеджер;Звонки;Рассылки/Переписки;Продажи;Сомони;USD;Ожидают оплаты\n' + S.dd.managers.map(m => [m.name, m.calls, m.broadcasts, m.sales, m.sales_amount, m.sales_usd, m.awaiting_payment].join(';')).join('\n');
+      const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([csv], { type: 'text/csv' })); a.download = `otchet_${f}_${t}.csv`; a.click();
+    };
+  }, () => shell('📅 Период', rng(f, t), sk(4), RT));
+};
+
+VIEWS.settings = () => swr('settings', 'getSettings', {}, (d, s) => {
+  const x = d.settings, row = (k, l) => `<label class="f"><span>${l}</span><input id="s_${k}" value="${esc(x[k])}"></label>`;
+  shell('⚙️ Настройки', 'Только для РОПа', `<div class="lb">Нормативы в день</div>${row('norm_calls', 'Норма звонков')}${row('norm_broadcasts', 'Норма рассылок/переписок')}
+    <div class="lb">Отчёты</div>${row('deadline', 'Время сдачи')}${row('company', 'Компания')}
+    <button class="btn p" id="sv">Сохранить</button><button class="btn o" id="lo">Выйти</button>`, RT, s);
+  $('#lo').onclick = logout;
+  $('#sv').onclick = () => run($('#sv'), async () => {
+    const o = {}; ['norm_calls', 'norm_broadcasts', 'deadline', 'company'].forEach(k => o[k] = $('#s_' + k).value);
+    try { const r = await api('saveSettings', { s: o }); S.st = r.settings; localStorage.st = JSON.stringify(r.settings); cclear(); cset('settings', r); toast('Сохранено ✅', 'ok'); }
+    catch (e) { toast(e.message, 'er'); }
+  });
+}, () => shell('⚙️ Настройки', '', sk(4), RT));
+
 // ====== СТАРТ ======
-(async () => { if (S.token) { try { start(await api('me')); return; } catch (e) {} } login(); })();
+(async () => {
+  if (S.token) {
+    try { S.user = JSON.parse(localStorage.user); S.st = JSON.parse(localStorage.st || '{}'); } catch (e) { S.user = null; }
+    const chk = () => api('me').then(r => { S.user = r.user; S.st = r.settings; localStorage.user = JSON.stringify(r.user); localStorage.st = JSON.stringify(r.settings); });
+    if (S.user) { start(); chk().catch(() => {}); return; } // мгновенно из сохранённого
+    try { await chk(); return start(); } catch (e) {}
+  }
+  login();
+})();
 </script></body></html>
