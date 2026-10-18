@@ -479,4 +479,141 @@ addEventListener('touchend', async e => {
   }
   login();
 })();
+ // ====== ЧАТ: добавка. Вставляется ПЕРЕД самым последним  Остальной код не меняется ======
+(function(){ const st = document.createElement('style'); st.textContent = `.cm{display:flex;flex-direction:column;gap:4px}
+.bub{max-width:82%;padding:8px 12px;border-radius:16px;white-space:pre-wrap;overflow-wrap:anywhere;font-size:15px;animation:up .2s}
+.bub small{display:block;text-align:right;font-size:10px;opacity:.7;margin-top:2px}
+.bub.me{align-self:flex-end;background:var(--pr);color:#fff;border-bottom-right-radius:4px}
+.bub.th{align-self:flex-start;background:var(--card);border:1px solid var(--bd);border-bottom-left-radius:4px}
+.ci{position:fixed;bottom:0;left:50%;transform:translateX(-50%);width:100%;max-width:480px;display:flex;gap:8px;padding:8px 10px calc(8px + env(safe-area-inset-bottom));background:var(--card);border-top:1px solid var(--bd);z-index:10}
+.ci textarea{height:46px;padding:11px 12px;resize:none;flex:1;min-width:0}
+.ci .btn{width:52px;flex:none;height:46px;max-width:none}
+.bdg{background:var(--er);color:#fff;border-radius:10px;padding:1px 7px;font-size:11px;font-style:normal}
+.av{width:42px;height:42px;border-radius:50%;background:var(--pr);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700;flex:none}
+@media(min-width:600px) and (max-width:899px){.ci{max-width:640px}}`; document.head.appendChild(st); })();
+// вкладка «Чат» добавляется в меню без правки MT / RT
+if (!MT.some(t => t[0] === 'chat')) MT.splice(MT.length - 1, 0, ['chat', '💬', 'Чат']);
+if (!RT.some(t => t[0] === 'chat')) RT.splice(RT.length - 1, 0, ['chat', '💬', 'Чат']);
+
+// Сообщения хранятся в браузере, с сервера приходит только новое (since). Опрос: 3 с в диалоге, 10 с на странице, 30 с в фоне.
+const CH = { msgs: [], seen: {}, names: {}, since: 0, open: '', loaded: '', kick: false, pend: new Set() };
+const chk = k => k + ':' + (S.user ? S.user.id : '');
+const chHm = ts => { const d = new Date(ts); return pad(d.getHours()) + ':' + pad(d.getMinutes()); };
+const chTabs = () => S.user.role === 'rop' ? RT : MT;
+function chLoad() {
+  if (!S.user || CH.loaded === S.user.id) return; CH.loaded = S.user.id;
+  const rd = (k, d) => { try { return JSON.parse(localStorage.getItem(chk(k))) || d; } catch (e) { return d; } };
+  CH.msgs = rd('chat', []); CH.seen = rd('chatseen', {}); CH.names = rd('chatnames', {});
+  CH.since = Math.max(0, ...CH.msgs.filter(m => !m.p).map(m => m.ts));
+}
+const chSave = () => { try { localStorage.setItem(chk('chat'), JSON.stringify(CH.msgs.slice(-300))); } catch (e) {} };
+const chUnread = cid => CH.msgs.filter(m => m.f === cid && m.ts > (CH.seen[cid] || 0)).length;
+const chTotal = () => S.user ? CH.msgs.filter(m => m.f !== S.user.id && m.ts > (CH.seen[m.f] || 0)).length : 0;
+const chLast = cid => { const l = CH.msgs.filter(m => m.f === cid || m.t === cid); return l[l.length - 1]; };
+function chMark(cid) {
+  const mx = Math.max(0, ...CH.msgs.filter(m => m.f === cid).map(m => m.ts));
+  if (mx > (CH.seen[cid] || 0)) { CH.seen[cid] = mx; try { localStorage.setItem(chk('chatseen'), JSON.stringify(CH.seen)); } catch (e) {} }
+}
+let chTitle0 = document.title.replace(/^\(\d+\) /, '');
+function chBadge() {
+  const n = chTotal();
+  $$('.nav span[data-t=chat]').forEach(x => { if (x.dataset.n !== String(n)) { x.dataset.n = n; x.innerHTML = `<em>💬</em><br>Чат${n ? ` <b class="bdg">${n}</b>` : ''}`; } });
+  const t = (n ? '(' + n + ') ' : '') + chTitle0; if (document.title !== t) document.title = t;
+}
+let chBusy = false;
+async function chSync() {
+  if (!S.user || chBusy) return; chBusy = true;
+  const my = S.user.id;
+  try {
+    const r = await api('chatSync', { since: CH.since });
+    if (!S.user || S.user.id !== my) return;
+    CH.names = r.names || CH.names; try { localStorage.setItem(chk('chatnames'), JSON.stringify(CH.names)); } catch (e) {}
+    if (!r.msgs.length) return;
+    const first = CH.since === 0, have = new Set(CH.msgs.map(m => m.id));
+    const fresh = r.msgs.filter(m => m.f !== my && !have.has(m.id));
+    const by = new Map(CH.msgs.map(m => [m.id, m])); r.msgs.forEach(m => by.set(m.id, m));
+    CH.msgs = [...by.values()].sort((a, b) => a.ts - b.ts).slice(-300);
+    CH.since = Math.max(CH.since, ...r.msgs.map(m => m.ts));
+    chSave();
+    if (CH.open) { chMark(CH.open); chPaint(); }
+    else if (S.tab === 'chat' && !$('.ov')) { const c = cget('contacts'); if (c) chListRender(c, true); }
+    chBadge();
+    if (!first && fresh.length) chAlert(fresh);
+  } catch (e) {} finally { chBusy = false; }
+}
+function chAlert(fresh) {
+  const l = fresh[fresh.length - 1], who = CH.names[l.f] || 'Сообщение';
+  if (CH.open === l.f && !document.hidden) return;
+  if (document.hidden || !document.hasFocus()) {
+    if ('Notification' in window && Notification.permission === 'granted') {
+      try { const n = new Notification('💬 ' + who, { body: l.x, tag: 'chat-' + l.f }); n.onclick = () => { focus(); chOpen(l.f); n.close(); }; } catch (e) {}
+    }
+  } else toast('💬 ' + who + ': ' + l.x.slice(0, 40));
+}
+function chPaint(stick) {
+  const el = $('#cm'); if (!el || !CH.open) return;
+  const me = S.user.id, d = document.documentElement, near = d.scrollHeight - window.scrollY - window.innerHeight < 150;
+  const list = CH.msgs.filter(m => m.f === CH.open || m.t === CH.open);
+  el.innerHTML = list.map(m => `<div class="bub ${m.f === me ? 'me' : 'th'}">${esc(m.x)}<small>${chHm(m.ts)}${m.f === me ? (m.p ? ' ⏳' : ' ✓') : ''}</small></div>`).join('')
+    || '<div class="mu ctr">Напишите первое сообщение 👋</div>';
+  if (stick || near) window.scrollTo(0, d.scrollHeight);
+}
+function chSend() {
+  const t = $('#ct'), x = t.value.trim().slice(0, 500); if (!x) return;
+  const m = { id: Math.random().toString(36).slice(2, 14), f: S.user.id, t: CH.open, x, ts: Date.now(), p: 1 };
+  CH.msgs.push(m); chSave(); t.value = ''; chPaint(true); chPost(m);
+}
+async function chPost(m) {
+  if (CH.pend.has(m.id)) return; CH.pend.add(m.id);
+  try {
+    const r = await api('chatSend', { to: m.t, text: m.x, cid: m.id });
+    const i = CH.msgs.findIndex(z => z.id === m.id); if (i >= 0) CH.msgs[i] = r.msg;
+    CH.msgs.sort((a, b) => a.ts - b.ts); chSave(); chPaint();
+  } catch (e) {
+    if (!/Нет связи/.test(e.message)) { CH.msgs = CH.msgs.filter(z => z.id !== m.id); chSave(); chPaint(); toast(e.message, 'er'); } // при обрыве связи сообщение отправится позже
+  } finally { CH.pend.delete(m.id); }
+}
+function chOpen(id) {
+  CH.open = id; S.nav++; chMark(id);
+  const name = CH.names[id] || (((cget('contacts') || { list: [] }).list.find(c => c.id === id)) || {}).name || 'Чат';
+  shell(esc(name), '', `<div class="cm" id="cm"></div><div class="ci"><textarea id="ct" maxlength="500" placeholder="Сообщение"></textarea><button class="btn p" id="cs">➤</button></div>`, null, true, () => go('chat'));
+  chPaint(true); chBadge();
+  $('#cs').onclick = chSend;
+  $('#ct').onkeydown = e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); chSend(); } };
+  if (!matchMedia('(pointer:coarse)').matches) $('#ct').focus();
+  CH.kick = true;
+}
+function chListRender(d, s) {
+  const list = d.list.slice().sort((a, b) => ((chLast(b.id) || {}).ts || 0) - ((chLast(a.id) || {}).ts || 0) || a.name.localeCompare(b.name));
+  const ask = ('Notification' in window && Notification.permission === 'default') ? '<button class="btn o" id="nt">🔔 Включить уведомления о сообщениях</button>' : '';
+  shell('💬 Чат', 'Сообщения команде', ask + (list.map(c => {
+    const l = chLast(c.id), u = chUnread(c.id);
+    return `<div class="c rr" style="cursor:pointer" data-id="${esc(c.id)}"><span class="av">${esc(c.name.slice(0, 1).toUpperCase())}</span><div style="flex:1;min-width:0"><b>${esc(c.name)}</b>${c.role === 'rop' ? ' <span class="tg">РОП</span>' : ''}<div class="mu" style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${l ? (l.f !== c.id ? 'Вы: ' : '') + esc(l.x) : 'Напишите первое сообщение'}</div></div>${u ? `<b class="bdg">${u}</b>` : ''}</div>`;
+  }).join('') || '<div class="mu ctr">Пока некому писать</div>'), chTabs(), s);
+  $$('.bd [data-id]').forEach(e => e.onclick = () => chOpen(e.dataset.id));
+  if ($('#nt')) $('#nt').onclick = () => Notification.requestPermission().then(() => VIEWS.chat());
+}
+VIEWS.chat = () => { chLoad(); CH.open = ''; swr('contacts', 'contacts', {}, chListRender, () => shell('💬 Чат', 'Сообщения команде', sk(4), chTabs())); };
+let chWait = 0;
+setInterval(() => {
+  if (!S.user) { CH.open = ''; if (!window.chPinged) { window.chPinged = 1; api('ping').catch(() => {}); } return; } // на экране входа «будим» сервер
+  chLoad();
+  if (CH.open && !$('#cm')) CH.open = ''; // ушли из диалога на другую вкладку
+  chBadge();
+  if (++chWait >= (CH.open ? 3 : document.hidden ? 30 : 10) || CH.kick) {
+    chWait = 0; CH.kick = false;
+    CH.msgs.filter(m => m.p && m.f === S.user.id).forEach(chPost); // неотправленные уходят, как только появится связь
+    chSync();
+  }
+}, 1000);
+addEventListener('visibilitychange', () => { if (!document.hidden) CH.kick = true; });
+
+
+// разрешение на уведомления просим сами, при первом касании после входа (браузер требует действия человека)
+let chAskNotif = false;
+document.addEventListener('click', () => {
+  if (chAskNotif || !S.user || !('Notification' in window) || Notification.permission !== 'default') return;
+  chAskNotif = true;
+  try { Notification.requestPermission(); } catch (e) {}
+});
 </script></body></html>
